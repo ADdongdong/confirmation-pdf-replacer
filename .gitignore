@@ -24,3 +24,9 @@ Thumbs.db
 .playwright-cli/
 # 脚本工具
 git_init.py
+.env
+*.env
+*.key
+*.pem
+credentials.json
+secrets/
