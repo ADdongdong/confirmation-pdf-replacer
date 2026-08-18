@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>函证头部替换工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+    min-height: 100vh;
+    padding: 24px;
+    color: #2c3e50;
+  }
+
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .header h1 {
+    font-size: 26px;
+    font-weight: 600;
+    color: #1a3a5c;
+    margin-bottom: 6px;
+  }
+  .header p {
+    font-size: 14px;
+    color: #7f8c8d;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+    padding: 32px 36px;
+    margin-bottom: 20px;
+  }
+
+  .card-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: #1a3a5c;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #f0f2f5;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .icon {
+    width: 6px;
+    height: 22px;
+    background: #3b82f6;
+    border-radius: 3px;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+  .form-group:last-child { margin-bottom: 0; }
+
+  .form-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 14px;
+    font-weight: 500;
+    color: #4a5568;
+    margin-bottom: 6px;
+  }
+  .form-label .required {
+    color: #e53e3e;
+    font-size: 12px;
+    font-weight: 400;
+  }
+  .form-label .counter {
+    font-size: 12px;
+    font-weight: 400;
+    color: #a0aec0;
+  }
+  .form-label .counter.warn { color: #e53e3e; }
+
+  .form-input, .form-textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #2d3748;
+    background: #fafbfd;
+    transition: all 0.2s;
+  }
+  .form-input:focus, .form-textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+  }
+  .form-textarea {
+    resize: vertical;
+    min-height: 120px;
+    line-height: 1.7;
+  }
+  .form-input::placeholder, .form-textarea::placeholder {
+    color: #cbd5e0;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 600px) {
+    .form-row { grid-template-columns: 1fr; }
+    .card { padding: 24px 20px; }
+  }
+
+  .upload-area {
+    border: 2px dashed #d2dce6;
+    border-radius: 10px;
+    padding: 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    background: #fafbfd;
+  }
+  .upload-area:hover, .upload-area.dragover {
+    border-color: #3b82f6;
+    background: #f0f6ff;
+  }
+  .upload-area .upload-icon {
+    font-size: 36px;
+    color: #a0aec0;
+    margin-bottom: 8px;
+  }
+  .upload-area p {
+    color: #718096;
+    font-size: 14px;
+  }
+  .upload-area .upload-hint {
+    color: #a0aec0;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  .upload-area.selected {
+    border-color: #48bb78;
+    background: #f0fdf4;
+  }
+  .upload-area.selected .upload-icon { color: #48bb78; }
+  .file-name {
+    color: #276749;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 13px 28px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+  }
+  .btn-primary:hover { box-shadow: 0 4px 16px rgba(37,99,235,0.4); transform: translateY(-1px); }
+  .btn-primary:disabled {
+    background: #cbd5e0;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .toast {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    animation: slideDown 0.3s ease;
+    display: none;
+  }
+  .toast.show { display: block; }
+  .toast.error { background: #fed7d7; color: #9b2c2c; border: 1px solid #feb2b2; }
+  .toast.success { background: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
+  .result-card {
+    display: none;
+    text-align: center;
+    padding: 24px;
+  }
+  .result-card.show { display: block; }
+  .result-card .check-icon {
+    font-size: 48px;
+    color: #48bb78;
+    margin-bottom: 12px;
+  }
+  .result-card .dl-link {
+    display: inline-block;
+    margin-top: 16px;
+    padding: 10px 32px;
+    background: #48bb78;
+    color: #fff;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+    transition: all 0.2s;
+  }
+  .result-card .dl-link:hover { background: #38a169; }
+
+  .spinner {
+    display: none;
+    width: 22px;
+    height: 22px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  .spinner.show { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  input[type="file"] { display: none; }
+
+  /* 示例模板 */
+  .template-hint {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #a0aec0;
+  }
+  .template-hint a {
+    color: #3b82f6;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .template-hint a:hover { text-decoration: underline; }
+
+  /* === 预览覆盖区域 === */
+  .preview-card { display: none; }
+  .preview-card.show { display: block; }
+
+  .preview-wrapper {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    border: 2px solid #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: default;
+    line-height: 0;
+  }
+  .preview-wrapper img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* 红色半透明遮罩 */
+  .preview-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: rgba(220, 38, 38, 0.22);
+    border-bottom: 3px solid #dc2626;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* 拖拽手柄 */
+  .drag-handle {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 18px;
+    background: rgba(220, 38, 38, 0.5);
+    border-radius: 0 0 4px 4px;
+    cursor: ns-resize;
+    pointer-events: auto;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+  .drag-handle:hover { background: rgba(220, 38, 38, 0.7); }
+  .drag-handle::after {
+    content: "≡";
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 1;
+  }
+
+  /* 覆盖位置标签 */
+  .overlay-label {
+    position: absolute;
+    right: 8px;
+    background: rgba(220, 38, 38, 0.85);
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 4;
+    transform: translateY(-50%);
+  }
+
+  .preview-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    align-items: center;
+  }
+  .preview-actions .hint {
+    font-size: 12px;
+    color: #718096;
+    flex: 1;
+  }
+  .btn-sm {
+    padding: 6px 16px;
+    border: 1px solid #d2dce6;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    color: #4a5568;
+    transition: all 0.2s;
+  }
+  .btn-sm:hover { border-color: #3b82f6; color: #3b82f6; }
+  .btn-sm.active { background: #ebf4ff; border-color: #3b82f6; color: #2563eb; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>函证头部替换工具</h1>
+    <p>上传会所函证 PDF，填写券商信息，自动替换为券商格式</p>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- 函证说明 -->
+  <div class="card">
+    <div class="card-title"><span class="icon"></span>函证说明</div>
+
+    <div class="form-group">
+      <label class="form-label">
+        <span>致函单位 <span class="required">*</span></span>
+      </label>
+      <input type="text" class="form-input" id="company_name"
+             placeholder="如：中信证券股份有限公司" maxlength="60">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">
+        <span>函证正文 <span class="required">*</span></span>
+        <span class="counter" id="body_counter">0 / 250</span>
+      </label>
+      <textarea class="form-textarea" id="body_text"
+                placeholder="请输入函证正文内容，如：
+本公司聘请的XX证券股份有限公司正在对本公司进行尽职调查，根据中国证监会规定的尽职调查准则和相关指引，需询证本公司与贵公司往来款项等事项。下列信息出自本公司账簿记录..."
+                maxlength="250"></textarea>
+      <div class="template-hint">
+        <a onclick="fillTemplate()">📋 套用示例模板</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 联系方式 -->
+  <div class="card">
+    <div class="card-title"><span class="icon"></span>联系方式</div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">项目联系人</label>
+        <input type="text" class="form-input" id="contact_person"
+               placeholder="如：张三" maxlength="30">
+      </div>
+      <div class="form-group">
+        <label class="form-label">项目联系人电话</label>
+        <input type="text" class="form-input" id="contact_phone"
+               placeholder="如：13800138000" maxlength="20">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">收件人</label>
+        <input type="text" class="form-input" id="recipient"
+               placeholder="如：开源证券投行部" maxlength="30">
+      </div>
+      <div class="form-group">
+        <label class="form-label">收件人电话</label>
+        <input type="text" class="form-input" id="recipient_phone"
+               placeholder="如：0755-88888888" maxlength="20">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">邮箱</label>
+      <input type="text" class="form-input" id="email"
+             placeholder="如：touhang@kzq.com.cn" maxlength="60">
+    </div>
+  </div>
+
+  <!-- PDF 上传 -->
+  <div class="card">
+    <div class="card-title"><span class="icon"></span>上传 PDF</div>
+
+    <div class="upload-area" id="upload_area" onclick="document.getElementById('pdf_file').click()">
+      <div class="upload-icon">📄</div>
+      <p id="upload_text">点击选择会所函证 PDF 文件</p>
+      <p class="upload-hint">支持 .pdf 格式，最大 32MB</p>
+    </div>
+    <input type="file" id="pdf_file" accept=".pdf"
+           onchange="handleFileSelect(this)">
+  </div>
+
+  <!-- 预览覆盖区域 -->
+  <div class="card preview-card" id="preview_card">
+    <div class="card-title"><span class="icon"></span>调整白色覆盖区域</div>
+    <p style="font-size:13px;color:#718096;margin-bottom:12px;">
+      红色区域将被白色覆盖后重新填充。拖动红色区域下沿的 <b>≡</b> 手柄调整覆盖范围。
+    </p>
+    <div class="preview-wrapper" id="preview_wrapper">
+      <img id="preview_img" src="" alt="PDF预览" />
+      <div class="preview-overlay" id="preview_overlay"></div>
+      <div class="drag-handle" id="drag_handle"></div>
+      <div class="overlay-label" id="overlay_label">自动</div>
+    </div>
+    <div class="preview-actions">
+      <span class="hint" id="overlay_hint">覆盖区域：页面顶部 → <b id="overlay_value">自动检测</b></span>
+      <button class="btn-sm" onclick="resetOverlay()">重置为自动</button>
+    </div>
+  </div>
+
+  <!-- 提交 -->
+  <button class="btn btn-primary" id="submit_btn" onclick="submitForm()">
+    <span id="btn_text">生成替换 PDF</span>
+    <span class="spinner" id="spinner"></span>
+  </button>
+
+  <!-- 结果 -->
+  <div class="card result-card" id="result_card">
+    <div class="check-icon">✅</div>
+    <p style="font-size:16px;font-weight:600;color:#22543d;">PDF 已生成</p>
+    <p style="font-size:14px;color:#718096;margin-top:6px;" id="result_info"></p>
+    <a class="dl-link" id="dl_link" href="#">下载 PDF</a>
+    <p style="font-size:12px;color:#a0aec0;margin-top:12px;">函证编码与索引号已自动生成，未在页面上展示</p>
+  </div>
+</div>
+
+<script>
+  // ===== 字数统计 =====
+  const bodyText = document.getElementById('body_text');
+  const bodyCounter = document.getElementById('body_counter');
+
+  bodyText.addEventListener('input', function() {
+    const len = this.value.length;
+    bodyCounter.textContent = len + ' / 250';
+    bodyCounter.className = 'counter' + (len > 220 ? ' warn' : '');
+  });
+
+  // ===== 文件上传 =====
+  const pdfInput = document.getElementById('pdf_file');
+  const uploadArea = document.getElementById('upload_area');
+  const uploadText = document.getElementById('upload_text');
+
+  function handleFileSelect(input) {
+    if (input.files.length > 0) {
+      const f = input.files[0];
+      if (!f.name.toLowerCase().endsWith('.pdf')) {
+        showToast('请选择 PDF 格式文件', 'error');
+        input.value = '';
+        return;
+      }
+      uploadText.textContent = f.name;
+      uploadArea.classList.add('selected');
+    } else {
+      uploadText.textContent = '点击选择会所函证 PDF 文件';
+      uploadArea.classList.remove('selected');
+    }
+  }
+
+  // 拖拽支持
+  uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+  uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+  uploadArea.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    if (e.dataTransfer.files.length > 0) {
+      pdfInput.files = e.dataTransfer.files;
+      handleFileSelect(pdfInput);
+    }
+  });
+
+  // ===== 示例模板 =====
+  function fillTemplate() {
+    document.getElementById('company_name').value = '中信证券股份有限公司';
+    document.getElementById('body_text').value =
+      '本公司聘请的开源证券股份有限公司正在对本公司进行尽职调查，根据中国证监会规定的尽职调查准则和相关指引，需询证本公司与贵公司往来款项等事项。下列信息出自本公司账簿记录，如与贵公司记录相符，请在本函下端"信息证明无误"处签章证明；如有不符，请在"信息不符"处列明不符项目及差异缘由。';
+    bodyText.dispatchEvent(new Event('input'));
+    document.getElementById('contact_person').value = '张三';
+    document.getElementById('contact_phone').value = '13800138000';
+    document.getElementById('recipient').value = '开源证券投行部';
+    document.getElementById('recipient_phone').value = '0755-88888888';
+    document.getElementById('email').value = 'touhang@kzq.com.cn';
+  }
+
+  // ===== Toast =====
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + type;
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  // ===== 提交 =====
+  async function submitForm() {
+    const btn = document.getElementById('submit_btn');
+    const spinner = document.getElementById('spinner');
+    const btnText = document.getElementById('btn_text');
+
+    // 验证
+    const companyName = document.getElementById('company_name').value.trim();
+    const bodyTextVal = document.getElementById('body_text').value.trim();
+    const pdfFile = pdfInput.files[0];
+
+    if (!companyName) { showToast('请输入致函单位', 'error'); return; }
+    if (!bodyTextVal) { showToast('请输入函证正文', 'error'); return; }
+    if (bodyTextVal.length > 250) { showToast('正文超过250字符限制', 'error'); return; }
+    if (!pdfFile) { showToast('请上传会所函证 PDF 文件', 'error'); return; }
+
+    // 显示加载
+    btn.disabled = true;
+    spinner.classList.add('show');
+    btnText.textContent = '正在处理中...';
+    document.getElementById('result_card').classList.remove('show');
+
+    // 构建 FormData
+    const formData = new FormData();
+    formData.append('company_name', companyName);
+    formData.append('body_text', bodyTextVal);
+    formData.append('contact_person', document.getElementById('contact_person').value.trim());
+    formData.append('contact_phone', document.getElementById('contact_phone').value.trim());
+    formData.append('recipient', document.getElementById('recipient').value.trim());
+    formData.append('recipient_phone', document.getElementById('recipient_phone').value.trim());
+    formData.append('email', document.getElementById('email').value.trim());
+    formData.append('pdf_file', pdfFile);
+
+    // 追加白化区域参数（从顶部算起的距离，单位 pt；与后端 whiteoutBottom 坐标系一致）
+    if (previewData && previewData.userWhiteoutPercent != null) {
+      var whiteoutTop = (previewData.userWhiteoutPercent / 100) * previewData.pageHeight;
+      formData.append('whiteout_bottom', Math.round(whiteoutTop));
+    }
+
+    try {
+      const resp = await fetch('/generate', { method: 'POST', body: formData });
+      const data = await resp.json();
+
+      if (data.success) {
+        document.getElementById('result_info').textContent =
+          '致函单位：' + data.company_name + ' | 文件：' + data.filename;
+        document.getElementById('dl_link').href = '/download/' + data.filename;
+        document.getElementById('result_card').classList.add('show');
+        showToast('PDF 生成成功！', 'success');
+      } else {
+        const errors = data.errors || ['未知错误'];
+        showToast(errors.join('；'), 'error');
+      }
+    } catch (err) {
+      showToast('请求失败：' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      spinner.classList.remove('show');
+      btnText.textContent = '生成替换 PDF';
+    }
+  }
+
+  // ===== 预览相关 =====
+  var previewData = null; // { imageUrl, pageWidth, pageHeight, imageWidth, imageHeight, autoWhiteoutPct, userWhiteoutPercent }
+
+  // 上传 PDF 后自动获取预览
+  var origHandleFileSelect = handleFileSelect;
+  handleFileSelect = function(input) {
+    origHandleFileSelect(input);
+    if (input.files.length > 0) {
+      fetchPreview(input.files[0]);
+    } else {
+      hidePreview();
+    }
+  };
+
+  // 拖拽也触发预览
+  var origDropHandler = uploadArea.ondrop;
+  uploadArea.addEventListener('drop', function(e) {
+    setTimeout(function() {
+      if (pdfInput.files.length > 0) {
+        fetchPreview(pdfInput.files[0]);
+      }
+    }, 100);
+  });
+
+  function fetchPreview(pdfFile) {
+    var formData = new FormData();
+    formData.append('pdf_file', pdfFile);
+
+    showToast('正在生成预览...', 'success');
+
+    fetch('/preview', { method: 'POST', body: formData })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.success) {
+          showToast('预览失败: ' + (data.error || '未知错误'), 'error');
+          return;
+        }
+        previewData = data;
+        // 默认覆盖高度：自动检测值，用页面 35% 作为默认（模拟典型的自动检测结果）
+        previewData.autoWhiteoutPct = data.pageHeight > 0 ? Math.min(35, (data.pageHeight - 200) / data.pageHeight * 100) : 35;
+        previewData.userWhiteoutPercent = previewData.autoWhiteoutPct;
+
+        showPreview();
+      })
+      .catch(function(err) {
+        showToast('预览请求失败: ' + err.message, 'error');
+      });
+  }
+
+  function showPreview() {
+    var card = document.getElementById('preview_card');
+    var img = document.getElementById('preview_img');
+    var overlay = document.getElementById('preview_overlay');
+    var handle = document.getElementById('drag_handle');
+    var label = document.getElementById('overlay_label');
+    var wrapper = document.getElementById('preview_wrapper');
+
+    card.classList.add('show');
+    img.src = previewData.imageUrl;
+
+    // 等图片加载完成后设置 overlay 位置
+    img.onload = function() {
+      updateOverlayPosition();
+    };
+    // 如果图片已缓存，直接设置
+    if (img.complete && img.naturalWidth > 0) {
+      updateOverlayPosition();
+    }
+
+    // 窗口大小变化时更新
+    window.addEventListener('resize', updateOverlayPosition);
+
+    // 拖拽逻辑
+    setupDrag(handle, wrapper, overlay, label);
+  }
+
+  function hidePreview() {
+    document.getElementById('preview_card').classList.remove('show');
+    previewData = null;
+    window.removeEventListener('resize', updateOverlayPosition);
+  }
+
+  function updateOverlayPosition() {
+    var img = document.getElementById('preview_img');
+    var overlay = document.getElementById('preview_overlay');
+    var handle = document.getElementById('drag_handle');
+    var label = document.getElementById('overlay_label');
+    var wrapper = document.getElementById('preview_wrapper');
+    var valueEl = document.getElementById('overlay_value');
+
+    if (!previewData) return;
+
+    var imgHeight = img.clientHeight;
+    if (imgHeight === 0) return;
+
+    var pct = previewData.userWhiteoutPercent;
+    var overlayPx = (pct / 100) * imgHeight;
+
+    overlay.style.height = overlayPx + 'px';
+    handle.style.top = overlayPx + 'px';
+    label.style.top = overlayPx + 'px';
+
+    var pdfY = Math.round((pct / 100) * previewData.pageHeight);
+    if (pct === previewData.autoWhiteoutPct) {
+      valueEl.textContent = '自动 (' + pdfY + ' pt)';
+    } else {
+      valueEl.textContent = pdfY + ' pt (页面' + Math.round(pct) + '%)';
+    }
+  }
+
+  function setupDrag(handle, wrapper, overlay, label) {
+    var dragging = false;
+    var startY, startPct;
+
+    handle.addEventListener('mousedown', function(e) {
+      dragging = true;
+      startY = e.clientY;
+      startPct = previewData.userWhiteoutPercent;
+      e.preventDefault();
+      handle.style.background = 'rgba(185, 28, 28, 0.85)';
+    });
+
+    document.addEventListener('mousemove', function(e) {
+      if (!dragging || !previewData) return;
+
+      var img = document.getElementById('preview_img');
+      var imgHeight = img.clientHeight;
+      if (imgHeight === 0) return;
+
+      var deltaY = e.clientY - startY;
+      var deltaPct = (deltaY / imgHeight) * 100;
+      var newPct = startPct + deltaPct;
+
+      // 限制范围：5% ~ 75%
+      newPct = Math.max(5, Math.min(75, newPct));
+      previewData.userWhiteoutPercent = newPct;
+
+      updateOverlayPosition();
+    });
+
+    document.addEventListener('mouseup', function() {
+      if (dragging) {
+        dragging = false;
+        handle.style.background = 'rgba(220, 38, 38, 0.5)';
+      }
+    });
+
+    // 触摸支持
+    handle.addEventListener('touchstart', function(e) {
+      dragging = true;
+      startY = e.touches[0].clientY;
+      startPct = previewData.userWhiteoutPercent;
+      e.preventDefault();
+    }, { passive: false });
+
+    document.addEventListener('touchmove', function(e) {
+      if (!dragging || !previewData) return;
+      var img = document.getElementById('preview_img');
+      var imgHeight = img.clientHeight;
+      if (imgHeight === 0) return;
+      var deltaY = e.touches[0].clientY - startY;
+      var deltaPct = (deltaY / imgHeight) * 100;
+      var newPct = Math.max(5, Math.min(75, startPct + deltaPct));
+      previewData.userWhiteoutPercent = newPct;
+      updateOverlayPosition();
+    }, { passive: false });
+
+    document.addEventListener('touchend', function() {
+      dragging = false;
+      handle.style.background = 'rgba(220, 38, 38, 0.5)';
+    });
+  }
+
+  function resetOverlay() {
+    if (!previewData) return;
+    previewData.userWhiteoutPercent = previewData.autoWhiteoutPct;
+    updateOverlayPosition();
+  }
+</script>
+</body>
+</html>

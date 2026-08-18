@@ -1,0 +1,163 @@
+Prepared / Reviewed by	TSI/AIT/Agentic Practice		Version	1.0
+	CE&S OAP Team		Date	12/08/2025
+ 	 	 	 	 
+Document Intent
+ 
+This one-pager is designed to facilitate the technical scoping of agentic opportunities identified by the business for development within the One Agentic Platform (OAP). It enables stakeholders to validate whether the scenario is suitable for agentic development in OAP, identify key technical requirements and dependencies, and document essential information for subsequent design and implementation phases. 
+ 
+The completed form serves as a foundation for the Design Requirement Document that will be needed by the development team. It captures relevant business, technical, and operational considerations before moving forward.
+ 
+SBU	 A&I	Lead Agent Builder	 Nathan McGee
+LOB	 A&I Ops Center	Agent Builders	 Rob van Schooneveld
+SBU POC	 Rob van Schooneveld	 	 Khushboo Gupta
+ 
+Agentic Opportunity Title
+nERD – Early Risk Detection for At-Risk Support Engagements (Exec Escalation Prevention)
+nERD (Near-term/Early Risk Detection) is an internal Copilot Studio–based agent that continuously monitors in-scope A&I support engagements to detect early signs of risk that could lead to severity increases or executive escalations, and proactively notifies the right internal teams so they can intervene before issues escalate.
+Business Challenge or Scenario
+Executive escalations are massive time sinks across CSS. When an engagement “goes red,” we lose capacity and focus as senior engineers and leaders are pulled into urgent recovery work, and we often discover the risk only after the customer has already lost confidence.
+Today, a small A&I Ops Center team (roughly 6–8 reviewers) manually scans a subset of cases to identify at-risk engagements. This process is slow, labor-intensive, and can only cover a fraction of the total case volume. It lacks consistency across reviewers and does not provide proactive, real-time visibility into emerging risk.
+The problem shows up primarily through:
+•	Inbound customer communications, where frustration and loss of confidence appear in email sentiment and tone.
+•	Early lifecycle signals such as delays in initial engagement, unassigned high-severity cases approaching SLA thresholds, and other “off track” patterns.
+When these indicators are missed or detected too late, cases are more likely to result in severity increases and executive escalations, eroding customer trust and creating leadership fire drills.
+nERD is intended to close this gap by continuously monitoring individual cases—especially for strategic customers—and surfacing early, actionable risk signals before escalation becomes inevitable.
+Business Impact
+•	Reduced Executive Escalations: By detecting and acting on early risk indicators, nERD aims to reduce executive escalations and late-stage severity increases by 75% or more for in-scope A&I cases.
+•	Higher Customer Confidence: Earlier, targeted intervention should improve customer perception of responsiveness and control, especially for strategic customers, reducing DSAT and protecting renewals and long-term relationships.
+•	Increased Operational Efficiency: Manual risk reviews currently take roughly 45–60 minutes per case, multiplied across ~7 reviewers, at an estimated cost around $1.33 per person-minute. This equates to hundreds of dollars per manually reviewed case and a significant opportunity cost as senior talent is pulled away from other customers.
+Scope and scale:
+•	Current A&I Ops Center volume is approximately 1,100–2,000 cases per month.
+•	nERD is initially focused on this population (with emphasis on strategic accounts) but is designed so that its patterns and approach can be expanded to other commercial LOBs and support organizations over time.
+In summary, nERD is expected to:
+•	Save direct and indirect cost by reducing manual review and escalation remediation effort.
+•	Protect customer trust by catching risk earlier.
+•	Reduce leadership fire drills and “all hands on deck” scenarios that disrupt normal operations.
+Envisioned Agentic Solution
+nERD will function as an internal agentic service that:
+•	Listens to key case lifecycle events such as:
+o	CaseCreated
+o	EmailInteractionCreated (inbound customer emails)
+o	SLA and assignment status changes
+•	Analyzes signals to determine whether a case is “off track” and at risk of severity increase or executive escalation. Core signals include:
+o	Inbound customer communications and sentiment
+o	Case creation and severity details
+o	SLA time determination and proximity to breach
+o	Whether an engineer has been assigned in a timely manner
+o	Program type and case metadata to scope inclusion/exclusion
+•	Produces structured internal outputs, such as:
+o	A risk determination for the case (e.g., “at risk / not at risk”)
+o	A brief explanation of the drivers (e.g., strong negative sentiment, delayed assignment, SLA proximity)
+o	Recommended attention/notification targets (Ops Center, aligned managers, account-aligned leaders)
+•	Surfaces these outcomes through:
+o	A dashboard (likely via a Power Pages front-end backed by Dataverse) showing current active risks and their status.
+o	Notifications (e.g., Teams or email) for very high-risk scenarios, targeted at Ops Center reviewers and account-aligned managers/leaders.
+High-level architecture:
+•	A Copilot Studio agent reacts to case-related events (e.g., CaseCreated, EmailInteractionCreated) delivered via the MSaaS case event bus.
+•	The agent retrieves relevant DfM case metadata and inbound email content, applies AI-based risk classification and summarization, and writes results into Dataverse tables for persistence and dashboard consumption.
+•	A Power Pages (or similar) experience provides a near real-time view of active risks and history for Ops Center and management users.
+•	Optional notifications are sent via Teams/email to stakeholders aligned with specific customers or accounts.
+The primary outcome is accurate, explainable early risk detection. Any scoring is considered a secondary representation; the value lies in correctly highlighting risk, not in a standalone numeric score.
+Intended Target User
+The key users of nERD are:
+•	A&I Ops Center reviewers, who currently perform manual case risk reviews and will use nERD to focus their attention on the most relevant and high-risk engagements.
+•	Managers and leaders aligned with monitored customer accounts, who need timely visibility into emerging risk for their strategic customers so they can intervene, re-prioritize resources, or adjust engagement strategies.
+nERD is internal-only. No output is surfaced directly to customers in this iteration.
+Intended User Experience (UX Design Team can be contacted for support)
+Envisioned UX:
+•	Case lifecycle flow
+o	When a case is created, nERD begins tracking it if it meets inclusion criteria (e.g., SBU, program type, customer scope).
+o	As SLA thresholds approach without an engineer being assigned, nERD raises an alert indicating that the case may be off track and at risk.
+o	When inbound emails are received from in-scope customers, nERD evaluates the content for sentiment and escalation-relevant signals (e.g., strong frustration, loss of trust, repeated concerns without resolution) and raises alerts when risk is detected.
+•	Surfaces and channels
+o	Dashboard (Power Pages): A consolidated, transparent view of all actively tracked and at-risk engagements, including context and explanation of why nERD flagged them.
+o	Push notifications for high-risk items:
+	Teams or email alerts to Ops Center reviewers and managers aligned with affected accounts.
+	Notifications targeted so that those “closest to the customer” receive timely, actionable information.
+•	Proactive vs on-demand
+o	nERD will be primarily proactive, automatically scanning events and sending push notifications for high-risk situations.
+o	The dashboard provides on-demand visibility into the full set of tracked items and historical risk activity.
+•	Human-in-the-loop elements
+o	Ops Center reviewers can provide feedback on nERD’s assessments (e.g., confirm, downgrade, or adjust relevance).
+o	This feedback is used to tune the outputs over time, improving the signal-to-noise ratio and ensuring nERD’s recommendations stay actionable and trusted.
+AI Native/FACC Integration
+This scenario is not a FACC/AI Native case-resolution workflow. It focuses on an internal business process for early risk detection and operational awareness rather than direct case processing or customer-facing interaction.
+•	nERD is designed as a separate, non-FACC workflow:
+o	It does not rely on the Case Management Agent (CMA) or Case Engagement Agent (CEA) for core operation.
+o	It is not dependent on case “intent” routing; nERD’s logic centers on risk indicators, not conversational intent.
+•	If desired in future, CMA/CEA or other agents could consume nERD’s outputs (e.g., risk flags stored in Dataverse) to adapt their own behavior, but this is not required for the initial implementation.
+Known Technical Requirements (Knowledge & Data sources / Telemetry / Interactions)
+Key dependencies and requirements:
+•	Data sources
+o	DfM case inbound emails (content and metadata).
+o	DfM case metadata:
+	Case number
+	Severity
+	Assigned engineer count / assignment status
+	Program type and other attributes to scope inclusion/exclusion
+	SLA-related fields (due times, breach proximity)
+o	MSaaS case event service bus for:
+	CaseCreated
+	EmailInteractionCreated
+	Other relevant lifecycle events as they become available.
+•	Platform components
+o	Copilot Studio agent for the core risk detection and orchestration logic.
+o	Dataverse to persist risk assessment outcomes, explanations, and feedback for reporting and tuning.
+o	Power Pages (or equivalent) to expose the risk dashboard to internal stakeholders.
+•	Ecosystem interactions
+o	Optional posting of messages in Teams channels or direct notifications to individuals (opt-in/subscribe model).
+o	Optional email alerts to internal employees, if needed, using existing communication channels.
+o	No direct customer communication.
+•	Environments
+o	An initial INT proof of concept will be implemented and validated before promotion to PPE and beyond.
+There are no known hard dependencies on other agents or services at this time; nERD is intended to be self-contained but can later integrate with complementary agents as needed.
+Known Required AI Tech Stack Capabilities
+nERD will require AI capabilities in the following areas:
+•	Risk classification:
+o	Identifying whether a case appears at risk of severity escalation or executive escalation based on structured and unstructured signals.
+•	Summarization and explanation:
+o	Generating concise explanations of why a case was flagged (e.g., negative sentiment, repeated complaints, SLA proximity, lack of assignment).
+•	Signal extraction from unstructured text:
+o	Parsing customer emails and other free-form text to identify frustration, urgency, and escalation-relevant themes.
+Planned stack:
+•	Copilot Studio as the primary agentic and orchestration environment.
+•	LLMs to support logic, classification, narrative explanation, and extraction tasks.
+•	Potential use of SxG MCP tools as a data access mechanism, if the required attributes/signals are exposed via MCP in a way that aligns with nERD’s needs.
+Constraints:
+•	The solution should remain largely within a low/no-code Copilot Studio profile, leveraging built-in capabilities and connectors, with minimal custom code or external services where possible.
+Autonomy 
+nERD is designed to operate autonomously for risk assessment and internal notification but will not interact with customers.
+•	Autonomous behaviors
+o	Continuously assess risk as events occur (case creation, inbound emails, SLA proximity, assignment status changes).
+o	Persist assessments and explanations to Dataverse without human approval.
+o	Post informational messages and risk outcomes to Teams or other internal surfaces.
+o	Notify internal users (e.g., Ops Center reviewers, account-aligned managers) who opt in or are designated beneficiaries.
+•	Human roles
+o	Humans remain responsible for interpretation and action: triaging, engaging additional resources, adjusting severity, or initiating executive communication.
+o	Ops Center reviewers provide feedback on nERD’s correctness and usefulness, informing tuning.
+Guardrails:
+•	nERD never contacts the customer directly.
+•	nERD does not autonomously change severity or commit any customer-visible actions; it solely influences internal awareness and decision-making.
+Known Risks/Blockers/Challenges
+Key considerations include:
+•	Data access and governance
+o	Access approvals for required data sources (DfM case data, inbound emails, MSaaS event bus, etc.).
+o	Alignment with SxG/OAP governance processes around agentic access patterns and use of their MCP tools.
+•	Technical risks
+o	Ensuring a strong signal-to-noise ratio so that nERD’s alerts are trusted and not perceived as “crying wolf.”
+o	Avoiding both excessive false positives (alert fatigue) and false negatives (missed true risk).
+o	Tuning risk detection thresholds and rules as the system is piloted.
+•	Organizational and ownership risks
+o	Clarifying ownership of “risk detection” as a domain within CSS, given that SxG already operates an in-house quality review agent and may see nERD as overlapping.
+o	Ensuring that nERD is positioned as complementary (focusing on early, operational risk detection for specific SBUs/LOBs) rather than conflicting with broader platform roadmaps.
+There are no major concerns about foundational technical feasibility; the main challenges are around governance, alignment, and effective tuning for adoption.
+References
+•	Hackathon Project Submission / Description
+o	Original nERD proposal describing the use of agentic AI to:
+	Monitor key case health KPIs
+	Detect early indicators of potential executive escalations / severity increases
+	Optimize and focus the manual review work of the Ops Center team
+	Achieve outcomes of reduced escalations, higher customer confidence, and more efficient reviews.
+•	Synthetic test scenarios
+o	Early experiments using synthetic customer emails expressing strong frustration.
+o	These tests confirm that nERD will need to accurately identify both the presence and intensity of negative sentiment and related signals to raise appropriate warnings.

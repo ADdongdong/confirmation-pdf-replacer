@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# IDE / 工具
+.codebuddy/
+.idea/
+.vscode/
+
+# 生成输出（处理结果）
+python/outputs/
+
+# Java 编译产物
+java/target/
+java/out/
+
+# 系统文件
+Thumbs.db
+.DS_Store
+
+# Playwright CLI 临时文件
+.playwright-cli/
+# 脚本工具
+git_init.py

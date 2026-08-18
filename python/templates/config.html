@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>模板配置 - 函证头部替换工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+    min-height: 100vh;
+    padding: 24px;
+    color: #2c3e50;
+  }
+
+  .container { max-width: 840px; margin: 0 auto; }
+
+  .header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .header h1 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #1a3a5c;
+    margin-bottom: 4px;
+  }
+  .header p { font-size: 14px; color: #7f8c8d; }
+
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+    padding: 28px 32px;
+    margin-bottom: 20px;
+  }
+
+  .card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a3a5c;
+    margin-bottom: 18px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #f0f2f5;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .icon {
+    width: 5px;
+    height: 20px;
+    background: #3b82f6;
+    border-radius: 3px;
+  }
+
+  .form-group { margin-bottom: 16px; }
+  .form-group:last-child { margin-bottom: 0; }
+
+  .form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #4a5568;
+    margin-bottom: 5px;
+    display: block;
+  }
+
+  .form-input, .form-textarea {
+    width: 100%;
+    padding: 9px 13px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #2d3748;
+    background: #fafbfd;
+    transition: all 0.2s;
+  }
+  .form-input:focus, .form-textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+  }
+  .form-textarea {
+    resize: vertical;
+    min-height: 100px;
+    line-height: 1.7;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  @media (max-width: 640px) {
+    .form-row { grid-template-columns: 1fr; }
+    .card { padding: 22px 18px; }
+  }
+
+  /* === 上传区 === */
+  .upload-zone {
+    border: 2px dashed #d2dce6;
+    border-radius: 10px;
+    padding: 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    background: #fafbfd;
+    margin-bottom: 16px;
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: #3b82f6;
+    background: #f0f6ff;
+  }
+  .upload-zone .upload-icon { font-size: 36px; color: #a0aec0; margin-bottom: 8px; }
+  .upload-zone p { color: #718096; font-size: 14px; }
+  .upload-zone .upload-hint { color: #a0aec0; font-size: 12px; margin-top: 4px; }
+  .upload-zone.selected { border-color: #48bb78; background: #f0fdf4; }
+  .upload-zone.selected .upload-icon { color: #48bb78; }
+  input[type="file"] { display: none; }
+
+  /* === 预览覆盖 === */
+  .preview-section { display: none; }
+  .preview-section.show { display: block; }
+
+  .preview-wrapper {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    border: 2px solid #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+    line-height: 0;
+    background: #fff;
+  }
+  .preview-wrapper img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .preview-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: rgba(220, 38, 38, 0.22);
+    border-bottom: 3px solid #dc2626;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .drag-handle {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 18px;
+    background: rgba(220, 38, 38, 0.5);
+    border-radius: 0 0 4px 4px;
+    cursor: ns-resize;
+    pointer-events: auto;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+  .drag-handle:hover { background: rgba(220, 38, 38, 0.7); }
+  .drag-handle::after {
+    content: "≡";
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 1;
+  }
+
+  .overlay-label {
+    position: absolute;
+    right: 8px;
+    background: rgba(220, 38, 38, 0.85);
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 4;
+    transform: translateY(-50%);
+  }
+
+  .preview-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    align-items: center;
+  }
+  .preview-actions .hint {
+    font-size: 12px;
+    color: #718096;
+    flex: 1;
+  }
+  .btn-sm {
+    padding: 6px 16px;
+    border: 1px solid #d2dce6;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    color: #4a5568;
+    transition: all 0.2s;
+  }
+  .btn-sm:hover { border-color: #3b82f6; color: #3b82f6; }
+  .btn-sm.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+
+  /* === 颜色图例 === */
+  .legend-bar {
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    right: 4px;
+    height: 3px;
+    background: rgba(34, 197, 94, 0.7);
+    pointer-events: none;
+    z-index: 5;
+    display: none;
+  }
+  .legend-bar.show { display: block; }
+
+  /* === 按钮 === */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 13px 28px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+  }
+  .btn-primary:hover { box-shadow: 0 4px 16px rgba(37,99,235,0.4); transform: translateY(-1px); }
+  .btn-primary:disabled { background: #cbd5e0; box-shadow: none; cursor: not-allowed; transform: none; }
+
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .btn-row .btn { flex: 1; }
+
+  /* === Toast === */
+  .toast {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    animation: slideDown 0.3s ease;
+    display: none;
+  }
+  .toast.show { display: block; }
+  .toast.error { background: #fed7d7; color: #9b2c2c; border: 1px solid #feb2b2; }
+  .toast.success { background: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; }
+  .toast.info { background: #bee3f8; color: #2a4365; border: 1px solid #90cdf4; }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
+  .spinner {
+    display: none;
+    width: 22px;
+    height: 22px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  .spinner.show { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* === 加载已有配置 === */
+  .load-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    background: #f7fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+  }
+  .load-section label {
+    font-size: 13px;
+    color: #4a5568;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .load-section select {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    background: #fff;
+    color: #2d3748;
+  }
+  .load-section select:focus { outline: none; border-color: #3b82f6; }
+  .load-section .btn-group {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .load-section .btn-sm {
+    padding: 6px 14px;
+    border: 1px solid #d2dce6;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    color: #4a5568;
+    transition: all 0.2s;
+  }
+  .load-section .btn-sm:hover { border-color: #3b82f6; color: #3b82f6; }
+  .load-section .btn-sm.btn-danger { color: #e53e3e; border-color: #fc8181; }
+  .load-section .btn-sm.btn-danger:hover { background: #fed7d7; border-color: #e53e3e; }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    font-size: 13px;
+    color: #4a5568;
+  }
+  .checkbox-row input[type="checkbox"] { accent-color: #3b82f6; }
+
+  .config-info {
+    font-size: 12px;
+    color: #a0aec0;
+    margin-top: 12px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>模板配置</h1>
+    <p>设置函证正文、联系方式及覆盖区域，保存后批量处理直接复用</p>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- 步骤 1: 上传样本 PDF，设置覆盖区域 -->
+  <div class="card">
+    <div class="card-title"><span class="icon"></span>1. 覆盖区域校准（上传样本 PDF）</div>
+    <p style="font-size:13px;color:#718096;margin-bottom:14px;">
+      上传一份代表性格式的会所函证 PDF，拖动红色遮罩下沿调整覆盖范围。绿线为自动检测的表格保护线。
+    </p>
+
+    <div class="upload-zone" id="upload_zone" onclick="document.getElementById('sample_pdf').click()">
+      <div class="upload-icon">📄</div>
+      <p id="upload_text">点击选择样本会所函证 PDF</p>
+      <p class="upload-hint">用于校准覆盖区域，不参与最终生成</p>
+    </div>
+    <input type="file" id="sample_pdf" accept=".pdf" onchange="handleSampleSelect(this)">
+
+    <div class="preview-section" id="preview_section">
+      <div style="margin-top:14px;font-size:13px;color:#718096;">
+        红色区域 = 将被白色覆盖后重新填充 &nbsp;|&nbsp; 拖动 <b>≡</b> 调整下边界
+      </div>
+      <div style="text-align:center;margin-top:10px;">
+        <div class="preview-wrapper" id="preview_wrapper">
+          <img id="preview_img" src="" alt="PDF预览" />
+          <div class="preview-overlay" id="preview_overlay"></div>
+          <div class="drag-handle" id="drag_handle"></div>
+          <div class="overlay-label" id="overlay_label">自动</div>
+          <div class="legend-bar" id="table_legend"></div>
+        </div>
+      </div>
+      <div class="preview-actions">
+        <span class="hint">
+          覆盖下界: <b id="overlay_value">自动检测</b>
+          <span style="color:#a0aec0;margin-left:8px;" id="table_info"></span>
+        </span>
+        <button class="btn-sm" id="btn_auto" onclick="resetOverlay()">重置为自动</button>
+        <button class="btn-sm" id="btn_force" onclick="toggleForce()">使用自动值</button>
+      </div>
+      <div class="config-info">
+        <b>提示：</b>若"使用自动值"，批量处理时每个 PDF 各自检测表格位置（更安全）；若"强制此值"，所有 PDF 统一使用此覆盖下界。
+      </div>
+    </div>
+  </div>
+
+  <!-- 步骤 2: 模板内容 -->
+  <div class="card">
+    <div class="card-title"><span class="icon"></span>2. 模板内容</div>
+
+    <div class="load-section">
+      <label for="load_select">加载已有配置</label>
+      <select id="load_select" onchange="onConfigSelected()">
+        <option value="">-- 请选择 --</option>
+      </select>
+      <div class="btn-group">
+        <button class="btn-sm" onclick="loadSelectedConfig()">加载</button>
+        <button class="btn-sm btn-danger" onclick="deleteSelectedConfig()">删除</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">函证正文 <span style="color:#e53e3e;font-size:12px;">*</span></label>
+      <textarea class="form-textarea" id="body_text"
+                placeholder="请输入函证正文内容，如：本公司聘请的XX证券股份有限公司正在对本公司进行尽职调查..."
+                maxlength="300"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">联系方式</label>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">项目联系人</label>
+        <input type="text" class="form-input" id="contact_person" placeholder="如：张三" maxlength="30">
+      </div>
+      <div class="form-group">
+        <label class="form-label">项目联系人电话</label>
+        <input type="text" class="form-input" id="contact_phone" placeholder="如：13800138000" maxlength="20">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">收件人</label>
+        <input type="text" class="form-input" id="recipient" placeholder="如：开源证券投行部" maxlength="30">
+      </div>
+      <div class="form-group">
+        <label class="form-label">收件人电话</label>
+        <input type="text" class="form-input" id="recipient_phone" placeholder="如：0755-88888888" maxlength="20">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">邮箱</label>
+      <input type="text" class="form-input" id="email" placeholder="如：touhang@kzq.com.cn" maxlength="60">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">配置名称 <span style="color:#e53e3e;font-size:12px;">*</span></label>
+      <input type="text" class="form-input" id="config_name" placeholder="如：开源证券-默认模板" maxlength="40">
+    </div>
+
+    <div class="checkbox-row">
+      <input type="checkbox" id="is_default" checked />
+      <label for="is_default">设为默认配置（批量页面自动加载）</label>
+    </div>
+  </div>
+
+  <!-- 保存按钮 -->
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="saveConfig()">
+      <span id="btn_text">保存配置</span>
+      <span class="spinner" id="spinner"></span>
+    </button>
+  </div>
+</div>
+
+<script>
+// ===== 全局状态 =====
+var previewData = null;  // { imageUrl, pageWidth, pageHeight, imageWidth, imageHeight, tableY, autoWhiteoutBottom }
+var forceWhiteout = false;  // true=强制使用手动值, false=使用自动检测
+
+// ===== 文件上传 =====
+var uploadZone = document.getElementById('upload_zone');
+var uploadText = document.getElementById('upload_text');
+var sampleInput = document.getElementById('sample_pdf');
+
+uploadZone.addEventListener('dragover', function(e) { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', function() { uploadZone.classList.remove('dragover'); });
+uploadZone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length > 0) {
+    sampleInput.files = e.dataTransfer.files;
+    handleSampleSelect(sampleInput);
+  }
+});
+
+function handleSampleSelect(input) {
+  if (input.files.length > 0) {
+    var f = input.files[0];
+    if (!f.name.toLowerCase().endsWith('.pdf')) {
+      showToast('请选择 PDF 格式文件', 'error');
+      input.value = '';
+      return;
+    }
+    uploadText.textContent = f.name;
+    uploadZone.classList.add('selected');
+    fetchPreview(f);
+  }
+}
+
+function fetchPreview(pdfFile) {
+  var formData = new FormData();
+  formData.append('pdf_file', pdfFile);
+
+  fetch('/config/preview', { method: 'POST', body: formData })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.success) {
+        showToast('预览失败: ' + (data.error || '未知错误'), 'error');
+        return;
+      }
+      previewData = data;
+      previewData.userWhiteoutBottom = data.autoWhiteoutBottom;
+      forceWhiteout = false;
+      updateBtnState();
+      showPreview();
+    })
+    .catch(function(err) {
+      showToast('预览请求失败: ' + err.message, 'error');
+    });
+}
+
+// ===== 预览显示 =====
+function showPreview() {
+  var section = document.getElementById('preview_section');
+  var img = document.getElementById('preview_img');
+
+  section.classList.add('show');
+  img.src = previewData.imageUrl;
+
+  img.onload = function() { updateOverlayPosition(); };
+  if (img.complete && img.naturalWidth > 0) { updateOverlayPosition(); }
+
+  window.addEventListener('resize', updateOverlayPosition);
+  setupDrag();
+}
+
+function updateOverlayPosition() {
+  var img = document.getElementById('preview_img');
+  var overlay = document.getElementById('preview_overlay');
+  var handle = document.getElementById('drag_handle');
+  var label = document.getElementById('overlay_label');
+  var valueEl = document.getElementById('overlay_value');
+  var legend = document.getElementById('table_legend');
+  var tableInfo = document.getElementById('table_info');
+
+  if (!previewData) return;
+  var imgHeight = img.clientHeight;
+  if (imgHeight === 0) return;
+
+  // 用户当前设置的白化下界 → 图像像素位置
+  var wy = previewData.userWhiteoutBottom;
+  var overlayPx = (wy / previewData.pageHeight) * imgHeight;
+
+  overlay.style.height = overlayPx + 'px';
+  handle.style.top = overlayPx + 'px';
+  label.style.top = overlayPx + 'px';
+  label.textContent = Math.round(wy) + ' pt';
+
+  // 表格保护线（绿色标记）
+  var tablePx = (previewData.tableY / previewData.pageHeight) * imgHeight;
+  legend.style.top = tablePx + 'px';
+  if (previewData.tableY < previewData.pageHeight * 0.9) {
+    legend.classList.add('show');
+  }
+
+  var autoWy = previewData.autoWhiteoutBottom;
+  if (wy === autoWy && !forceWhiteout) {
+    valueEl.textContent = '自动检测 (' + Math.round(autoWy) + ' pt)';
+  } else {
+    valueEl.textContent = '手动 ' + Math.round(wy) + ' pt（自动: ' + Math.round(autoWy) + ' pt）';
+  }
+
+  tableInfo.textContent = '表格保护线: y=' + Math.round(previewData.tableY) + ' pt';
+}
+
+function setupDrag() {
+  var handle = document.getElementById('drag_handle');
+  var dragging = false;
+  var startY, startWy;
+
+  handle.addEventListener('mousedown', function(e) {
+    dragging = true;
+    startY = e.clientY;
+    startWy = previewData.userWhiteoutBottom;
+    e.preventDefault();
+    handle.style.background = 'rgba(185, 28, 28, 0.85)';
+  });
+
+  document.addEventListener('mousemove', function(e) {
+    if (!dragging || !previewData) return;
+    var img = document.getElementById('preview_img');
+    var imgHeight = img.clientHeight;
+    if (imgHeight === 0) return;
+    var deltaY = e.clientY - startY;
+    var deltaPt = (deltaY / imgHeight) * previewData.pageHeight;
+    var newWy = startWy + deltaPt;
+    // 限制范围：48pt ~ (tableY - 5) pt
+    newWy = Math.max(48, Math.min(previewData.tableY - 5, newWy));
+    previewData.userWhiteoutBottom = newWy;
+    forceWhiteout = true;
+    updateBtnState();
+    updateOverlayPosition();
+  });
+
+  document.addEventListener('mouseup', function() {
+    if (dragging) {
+      dragging = false;
+      handle.style.background = 'rgba(220, 38, 38, 0.5)';
+    }
+  });
+
+  // 触摸支持
+  handle.addEventListener('touchstart', function(e) {
+    dragging = true;
+    startY = e.touches[0].clientY;
+    startWy = previewData.userWhiteoutBottom;
+    e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener('touchmove', function(e) {
+    if (!dragging || !previewData) return;
+    var img = document.getElementById('preview_img');
+    var imgHeight = img.clientHeight;
+    if (imgHeight === 0) return;
+    var deltaY = e.touches[0].clientY - startY;
+    var deltaPt = (deltaY / imgHeight) * previewData.pageHeight;
+    var newWy = Math.max(48, Math.min(previewData.tableY - 5, startWy + deltaPt));
+    previewData.userWhiteoutBottom = newWy;
+    forceWhiteout = true;
+    updateBtnState();
+    updateOverlayPosition();
+  }, { passive: false });
+
+  document.addEventListener('touchend', function() {
+    dragging = false;
+    handle.style.background = 'rgba(220, 38, 38, 0.5)';
+  });
+}
+
+function resetOverlay() {
+  if (!previewData) return;
+  previewData.userWhiteoutBottom = previewData.autoWhiteoutBottom;
+  forceWhiteout = false;
+  updateBtnState();
+  updateOverlayPosition();
+}
+
+function toggleForce() {
+  forceWhiteout = !forceWhiteout;
+  updateBtnState();
+}
+
+function updateBtnState() {
+  var btnAuto = document.getElementById('btn_auto');
+  var btnForce = document.getElementById('btn_force');
+  if (forceWhiteout) {
+    btnAuto.classList.remove('active');
+    btnForce.classList.add('active');
+    btnForce.textContent = '强制此值 ✓';
+  } else {
+    btnAuto.classList.add('active');
+    btnForce.classList.remove('active');
+    btnForce.textContent = '使用自动值';
+  }
+}
+
+// ===== 配置加载 =====
+function loadConfigList() {
+  fetch('/config/list')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.success) return;
+      var sel = document.getElementById('load_select');
+      sel.innerHTML = '<option value="">-- 加载已有配置 --</option>';
+      data.configs.forEach(function(c) {
+        sel.innerHTML += '<option value="' + escAttr(c.filename) + '">' +
+          escHtml(c.name) + (c.has_whiteout ? ' · 已校准' : '') +
+          '</option>';
+      });
+    })
+    .catch(function() {});
+}
+
+function loadSelectedConfig() {
+  var sel = document.getElementById('load_select');
+  var filename = sel.value;
+  if (!filename) { showToast('请先选择一个配置', 'error'); return; }
+
+  fetch('/config/load/' + filename)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.success) { showToast(data.error || '加载失败', 'error'); return; }
+      var c = data.config;
+      document.getElementById('body_text').value = c.body_text || '';
+      document.getElementById('contact_person').value = (c.contacts && c.contacts['项目联系人']) || '';
+      document.getElementById('contact_phone').value = (c.contacts && c.contacts['项目联系人电话']) || '';
+      document.getElementById('recipient').value = (c.contacts && c.contacts['收件人']) || '';
+      document.getElementById('recipient_phone').value = (c.contacts && c.contacts['收件人电话']) || '';
+      document.getElementById('email').value = (c.contacts && c.contacts['邮箱']) || '';
+      document.getElementById('config_name').value = c.name || filename.replace('.json', '');
+
+      // 覆盖区域：若配置有 whiteout_bottom 且已加载预览，则应用
+      if (c.whiteout_bottom != null && previewData) {
+        previewData.userWhiteoutBottom = c.whiteout_bottom;
+        forceWhiteout = true;
+        updateBtnState();
+        updateOverlayPosition();
+      }
+
+      showToast('已加载配置: ' + c.name, 'success');
+    })
+    .catch(function(err) {
+      showToast('加载失败: ' + err.message, 'error');
+    });
+}
+
+function onConfigSelected() {
+  // 选中后自动加载
+  var sel = document.getElementById('load_select');
+  if (sel.value) {
+    loadSelectedConfig();
+  }
+}
+
+function deleteSelectedConfig() {
+  var sel = document.getElementById('load_select');
+  var filename = sel.value;
+  if (!filename) { showToast('请先选择一个配置', 'error'); return; }
+  if (!confirm('确定删除配置 "' + sel.options[sel.selectedIndex].text + '" 吗？')) return;
+
+  fetch('/config/delete/' + filename, { method: 'DELETE' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        showToast('已删除', 'success');
+        sel.value = '';
+        loadConfigList();
+      } else {
+        showToast(data.error || '删除失败', 'error');
+      }
+    })
+    .catch(function(err) {
+      showToast('删除失败: ' + err.message, 'error');
+    });
+}
+
+// ===== 保存配置 =====
+function saveConfig() {
+  var name = document.getElementById('config_name').value.trim();
+  var bodyText = document.getElementById('body_text').value.trim();
+
+  if (!name) { showToast('请输入配置名称', 'error'); return; }
+  if (!bodyText) { showToast('请输入函证正文', 'error'); return; }
+
+  var whiteoutBottom = null;
+  if (forceWhiteout && previewData) {
+    whiteoutBottom = Math.round(previewData.userWhiteoutBottom);
+  }
+
+  var btn = document.getElementById('submit_btn');
+  var spinner = document.getElementById('spinner');
+  var btnText = document.getElementById('btn_text');
+  btn.disabled = true;
+  spinner.classList.add('show');
+  btnText.textContent = '正在保存...';
+
+  fetch('/config/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: name,
+      body_text: bodyText,
+      contacts: {
+        '项目联系人': document.getElementById('contact_person').value.trim(),
+        '项目联系人电话': document.getElementById('contact_phone').value.trim(),
+        '收件人': document.getElementById('recipient').value.trim(),
+        '收件人电话': document.getElementById('recipient_phone').value.trim(),
+        '邮箱': document.getElementById('email').value.trim(),
+      },
+      whiteout_bottom: whiteoutBottom,
+      is_default: document.getElementById('is_default').checked,
+    })
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      btn.disabled = false;
+      spinner.classList.remove('show');
+      btnText.textContent = '保存配置';
+      if (data.success) {
+        showToast('配置已保存: ' + name, 'success');
+        loadConfigList();
+      } else {
+        showToast(data.error || '保存失败', 'error');
+      }
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      spinner.classList.remove('show');
+      btnText.textContent = '保存配置';
+      showToast('保存失败: ' + err.message, 'error');
+    });
+}
+
+// ===== Toast =====
+function showToast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || 'info');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function() { t.classList.remove('show'); }, 3500);
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function escAttr(s) {
+  if (!s) return '';
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
+// ===== 初始化 =====
+loadConfigList();
+// 尝试自动加载默认配置
+fetch('/config/default')
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (!data.success) return;
+    var c = data.config;
+    document.getElementById('body_text').value = c.body_text || '';
+    document.getElementById('contact_person').value = (c.contacts && c.contacts['项目联系人']) || '';
+    document.getElementById('contact_phone').value = (c.contacts && c.contacts['项目联系人电话']) || '';
+    document.getElementById('recipient').value = (c.contacts && c.contacts['收件人']) || '';
+    document.getElementById('recipient_phone').value = (c.contacts && c.contacts['收件人电话']) || '';
+    document.getElementById('email').value = (c.contacts && c.contacts['邮箱']) || '';
+    document.getElementById('config_name').value = c.name || '';
+    if (c.whiteout_bottom != null) {
+      // 预览还没有加载，等加载后再应用
+    }
+    if (c.body_text) {
+      showToast('已加载默认配置: ' + c.name, 'info');
+    }
+  })
+  .catch(function() {});
+</script>
+</body>
+</html>

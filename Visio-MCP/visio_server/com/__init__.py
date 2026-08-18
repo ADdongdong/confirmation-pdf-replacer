@@ -1,0 +1,1 @@
+"""Visio COM subpackage."""
