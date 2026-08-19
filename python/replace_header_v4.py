@@ -667,7 +667,8 @@ def redact_footer_per_page(doc, footer_height=22.0, verbose=False):
 # 结构化数据接口（供 Web 表单调用）
 # ============================================================
 def process_from_data(input_path, output_path, company_name, body_text,
-                       contacts, font_file=None, whiteout_bottom=None, verbose=False):
+                       contacts, font_file=None, whiteout_bottom=None,
+                       footer_height=None, verbose=False):
     """从结构化数据直接替换 PDF 头部（供 Web 表单调用）
 
     Args:
@@ -678,6 +679,7 @@ def process_from_data(input_path, output_path, company_name, body_text,
         contacts:     dict, 字段: 项目联系人, 项目联系人电话, 收件人, 收件人电话, 邮箱
         font_file:    字体文件路径
         whiteout_bottom: 用户自定义白化下界 Y 坐标（从顶部算起，单位 pt），None=自动检测
+        footer_height: 页脚遮盖带高度（从页面底部向上，单位 pt），None=默认 22
         verbose:      是否打印详细信息
 
     Returns:
@@ -713,6 +715,11 @@ def process_from_data(input_path, output_path, company_name, body_text,
     email_val = contacts.get('邮箱', '').strip()
     if email_val:
         contact_lines.append(('single', f'邮箱：{email_val}'))
+
+    # 回函地址单独一行（全宽），会所收到函证后需寄回此处
+    return_address = contacts.get('回函地址', '').strip()
+    if return_address:
+        contact_lines.append(('single', f'回函地址：{return_address}'))
 
     # ---- 加粗提示行（固定文案），与“致：xxxx公司”行左对齐 -----
     PROMPT_LINE = '若您方有相关本询证函函证事项问题，请直接联系下方项目联系人电话：'
@@ -755,7 +762,8 @@ def process_from_data(input_path, output_path, company_name, body_text,
                           bold_font_file=bold_font_file)
 
         # 每页底部页脚遮盖（"索引号/编号/页码"）
-        n_footer = redact_footer_per_page(doc, footer_height=22.0,
+        fh = footer_height if footer_height is not None else 22.0
+        n_footer = redact_footer_per_page(doc, footer_height=fh,
                                           verbose=verbose)
         if verbose:
             print(f"\n  页脚遮盖: 共 {n_footer} 页")

@@ -36,7 +36,15 @@ PREVIEW_DIR = TEMP_DIR
 
 @app.route('/')
 def index():
-    """表单页"""
+    """表单页（React 前端入口）"""
+    return render_react()
+
+
+def render_react():
+    """渲染 React 构建产物；若未构建则回退到旧模板"""
+    react_index = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'react', 'index.html')
+    if os.path.exists(react_index):
+        return send_file(react_index)
     return render_template('index.html')
 
 
@@ -114,6 +122,7 @@ def generate():
             '收件人': request.form.get('recipient', '').strip(),
             '收件人电话': request.form.get('recipient_phone', '').strip(),
             '邮箱': request.form.get('email', '').strip(),
+            '回函地址': request.form.get('return_address', '').strip(),
         }
         # 用户自定义白化下界（来自前端红色遮罩拖拽，单位 pt）
         whiteout_bottom = request.form.get('whiteout_bottom', '').strip()
@@ -124,6 +133,16 @@ def generate():
                 whiteout_bottom = None
         else:
             whiteout_bottom = None
+
+        # 页脚遮盖高度（来自前端下界遮罩拖拽，单位 pt），None=默认 22
+        footer_height = request.form.get('footer_height', '').strip()
+        if footer_height:
+            try:
+                footer_height = float(footer_height)
+            except ValueError:
+                footer_height = None
+        else:
+            footer_height = None
 
         # ---- 2. 验证必填字段 ----
         errors = []
@@ -158,7 +177,9 @@ def generate():
         from replace_header_v4 import process_from_data
         success, result = process_from_data(
             input_pdf, output_pdf, company_name, body_text, contacts,
-            whiteout_bottom=whiteout_bottom, verbose=False
+            whiteout_bottom=whiteout_bottom,
+            footer_height=footer_height,
+            verbose=False
         )
 
         # 清理上传临时文件
@@ -215,7 +236,7 @@ def batch_page():
 @app.route('/upload')
 def upload_page():
     """PDF 格式转函主页面（自动加载默认配置 + 上传生成）"""
-    return render_template('upload.html')
+    return render_react()
 
 
 @app.route('/batch/upload', methods=['POST'])
@@ -349,6 +370,7 @@ def batch_generate():
     body_text = data.get('body_text', '').strip()
     contacts = data.get('contacts', {})
     whiteout_bottom = data.get('whiteout_bottom')  # None=自动检测, float=强制覆盖下界
+    footer_height = data.get('footer_height')  # None=默认 22, float=页脚遮盖带高度
 
     if not body_text:
         return jsonify({'success': False, 'error': '请输入函证正文'})
@@ -381,6 +403,7 @@ def batch_generate():
             success, result = process_from_data(
                 f['path'], out_pdf, recipient, body_text, contacts,
                 whiteout_bottom=whiteout_bottom,
+                footer_height=footer_height,
                 verbose=False
             )
             if success:
@@ -432,7 +455,7 @@ def batch_download(token):
 @app.route('/config')
 def config_page():
     """配置管理页面"""
-    return render_template('config.html')
+    return render_react()
 
 
 @app.route('/config/preview', methods=['POST'])
@@ -485,6 +508,9 @@ def config_preview():
             # 推荐的默认白化下界（table_y - 3，即表格行上方）
             auto_whiteout = max(48, min(table_y - 3, page_h * 0.55))
 
+            # 页脚遮盖（页码行）推荐起始 y：从页面底部向上 22pt
+            auto_footer_y = max(0, page_h - 22.0)
+
             return jsonify({
                 'success': True,
                 'imageUrl': f'/preview-img/cfg_preview_{uid}.png',
@@ -494,6 +520,7 @@ def config_preview():
                 'imageHeight': pix.height,
                 'tableY': round(table_y, 1),
                 'autoWhiteoutBottom': round(auto_whiteout, 1),
+                'autoFooterY': round(auto_footer_y, 1),
             })
 
         finally:
@@ -532,8 +559,10 @@ def config_save():
                 '收件人': data.get('contacts', {}).get('收件人', '').strip(),
                 '收件人电话': data.get('contacts', {}).get('收件人电话', '').strip(),
                 '邮箱': data.get('contacts', {}).get('邮箱', '').strip(),
+                '回函地址': data.get('contacts', {}).get('回函地址', '').strip(),
             },
             'whiteout_bottom': data.get('whiteout_bottom'),  # None=自动检测
+            'footer_height': data.get('footer_height'),  # None=默认 22
         }
 
         with open(config_path, 'w', encoding='utf-8') as f:

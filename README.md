@@ -37,11 +37,21 @@ hanzheng_pdf_tool_project/
 │       └── resources/
 │           └── index.html            # 内嵌 Web 前端
 │
+├── frontend/                 # React + Ant Design 前端（★ 当前 UI 方案）
+│   ├── src/
+│   │   ├── App.jsx           # 路由（HashRouter）+ 顶部导航
+│   │   ├── pages/            # 三个页面：SinglePage / BatchPage / ConfigPage
+│   │   ├── components/       # PreviewOverlay 预览遮罩拖拽组件
+│   │   └── api/              # axios 封装 + API 契约
+│   ├── webpack.config.js     # 构建配置（产物输出到 python/static/react/）
+│   └── package.json
+│
 └── python/                   # Python 版（备选方案，端口 8888）
-    ├── web_form_server.py    # Flask Web 服务
+    ├── web_form_server.py    # Flask Web 服务（页面路由渲染 React 产物）
     ├── replace_header_v4.py  # 核心处理引擎（PyMuPDF + pdfplumber）
-    ├── templates/index.html  # Web 前端模板
-    ├── static/index.html     # 静态资源
+    ├── templates/index.html  # Web 前端模板（旧版，React 未构建时回退）
+    ├── static/react/         # React 构建产物（webpack 输出）
+    ├── static/index.html     # 独立批量替换工具（勿动）
     ├── configs/              # 话术配置文件
     │   ├── broker_header.json
     │   ├── broker_home.txt
