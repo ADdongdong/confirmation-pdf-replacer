@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF 格式转函 — 批量处理</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: "Microsoft YaHei", "SimHei", "PingFang SC", sans-serif;
+    background: #f0f2f5; color: #333; line-height: 1.6;
+    min-height: 100vh;
+}
+.header {
+    background: linear-gradient(135deg, #1a5276, #2980b9);
+    color: #fff; padding: 16px 32px; display: flex;
+    align-items: center; justify-content: space-between;
+}
+.header h1 { font-size: 20px; font-weight: 600; }
+.header .links a { color: #cce5ff; text-decoration: none; margin-left: 24px; font-size: 14px; }
+.header .links a:hover { color: #fff; }
+
+.container { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+
+/* ====== 配置面板（可折叠） ====== */
+.config-panel {
+    background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    margin-bottom: 20px; overflow: hidden;
+}
+.config-header {
+    padding: 14px 20px; cursor: pointer; display: flex;
+    align-items: center; justify-content: space-between;
+    background: #fafbfc; border-bottom: 1px solid #e8eaed;
+    user-select: none;
+}
+.config-header h3 { font-size: 15px; color: #1a5276; }
+.config-header .arrow { transition: transform .25s; font-size: 12px; }
+.config-header .arrow.open { transform: rotate(90deg); }
+.config-header .config-actions { display: flex; gap: 8px; align-items: center; }
+.config-header .config-actions select { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
+.config-header .config-actions button {
+    padding: 4px 12px; border: 1px solid #1a5276; background: #fff;
+    color: #1a5276; border-radius: 4px; cursor: pointer; font-size: 13px;
+    transition: all .15s;
+}
+.config-header .config-actions button:hover { background: #1a5276; color: #fff; }
+.config-header .config-actions button.primary { background: #1a5276; color: #fff; }
+.config-header .config-actions button.primary:hover { background: #154360; }
+.config-body {
+    padding: 20px; display: none;
+}
+.config-body.open { display: block; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-grid .full { grid-column: 1 / -1; }
+.form-group label { display: block; font-size: 13px; color: #555; margin-bottom: 4px; font-weight: 600; }
+.form-group label .hint { font-weight: 400; color: #999; font-size: 12px; }
+.form-group input, .form-group textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid #d9d9d9;
+    border-radius: 5px; font-size: 14px; font-family: inherit;
+    transition: border-color .2s;
+}
+.form-group input:focus, .form-group textarea:focus {
+    border-color: #1a5276; outline: none; box-shadow: 0 0 0 2px rgba(26,82,118,.12);
+}
+.form-group textarea { resize: vertical; min-height: 60px; }
+.coverage-row {
+    display: flex; gap: 12px; align-items: flex-end;
+}
+.coverage-row .form-group { flex: 1; }
+.coverage-check { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.coverage-check input[type=checkbox] { width: auto; }
+.coverage-check label { font-size: 13px; color: #777; font-weight: 400; }
+
+/* ====== 上传区 ====== */
+.upload-section {
+    background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    margin-bottom: 20px; padding: 24px;
+}
+.upload-section h3 { font-size: 15px; color: #1a5276; margin-bottom: 12px; }
+.drop-zone {
+    border: 2px dashed #bdc3c7; border-radius: 8px; padding: 40px 20px;
+    text-align: center; cursor: pointer; transition: all .2s;
+    background: #fafbfc; margin-bottom: 16px;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+    border-color: #2980b9; background: #eaf2f8;
+}
+.drop-zone .icon { font-size: 36px; margin-bottom: 8px; color: #7f8c8d; }
+.drop-zone p { color: #7f8c8d; font-size: 14px; }
+.drop-zone .sub { color: #aaa; font-size: 12px; margin-top: 4px; }
+.upload-actions { display: flex; gap: 10px; }
+.btn {
+    padding: 8px 20px; border: none; border-radius: 5px; cursor: pointer;
+    font-size: 14px; font-weight: 500; transition: all .2s;
+}
+.btn.primary { background: #1a5276; color: #fff; }
+.btn.primary:hover { background: #154360; }
+.btn.primary:disabled { background: #a0b8cc; cursor: not-allowed; }
+.btn.secondary { background: #fff; color: #1a5276; border: 1px solid #1a5276; }
+.btn.secondary:hover { background: #eaf2f8; }
+.btn.danger { background: #c0392b; color: #fff; }
+.btn.danger:hover { background: #a93226; }
+
+/* ====== 文件列表 ====== */
+.file-list { margin-top: 16px; }
+.file-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border: 1px solid #e8eaed;
+    border-radius: 6px; margin-bottom: 8px; background: #fff;
+    transition: box-shadow .15s;
+}
+.file-item:hover { box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.file-item .name { flex: 1; font-size: 13px; color: #2c3e50; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-item .size { font-size: 12px; color: #999; min-width: 70px; text-align: right; }
+.file-item .recipient-input {
+    width: 200px; padding: 4px 8px; border: 1px solid #ddd;
+    border-radius: 4px; font-size: 13px;
+}
+.file-item .confidence-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 600;
+}
+.confidence-badge.high { background: #d4efdf; color: #1e8449; }
+.confidence-badge.medium { background: #fdebd0; color: #b9770e; }
+.confidence-badge.low { background: #fadbd8; color: #c0392b; }
+.file-item .re-extract { font-size: 12px; color: #2980b9; cursor: pointer; white-space: nowrap; }
+.file-item .re-extract:hover { text-decoration: underline; }
+
+/* ====== 生成区 ====== */
+.result-section { margin-top: 20px; display: none; }
+.result-section.show { display: block; }
+.result-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border: 1px solid #e8eaed;
+    border-radius: 6px; margin-bottom: 8px; background: #fff;
+}
+.result-item.success { border-left: 3px solid #27ae60; }
+.result-item.error { border-left: 3px solid #e74c3c; }
+.result-item .res-name { flex: 1; font-size: 13px; }
+.result-item .res-status { font-size: 12px; font-weight: 600; }
+.result-item .res-status.ok { color: #27ae60; }
+.result-item .res-status.err { color: #e74c3c; }
+.result-item .res-download { font-size: 12px; color: #2980b9; cursor: pointer; }
+.result-item .res-download:hover { text-decoration: underline; }
+
+.status-bar {
+    font-size: 13px; color: #666; padding: 10px 16px;
+    background: #fef9e7; border: 1px solid #f9e79f;
+    border-radius: 6px; margin-top: 12px; display: none;
+}
+.status-bar.show { display: block; }
+.spinner {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid transparent; border-top-color: #1a5276;
+    border-radius: 50%; animation: spin .6s linear infinite;
+    vertical-align: middle; margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.footer {
+    text-align: center; padding: 24px; color: #999; font-size: 12px;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>📄 PDF 格式转函 — 批量处理</h1>
+    <div class="links">
+        <a href="/">单文件处理</a>
+        <a href="/config">配置管理</a>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- ====== 配置面板 ====== -->
+    <div class="config-panel" id="configPanel">
+        <div class="config-header" onclick="toggleConfig()">
+            <h3>📝 填写模板</h3>
+            <div style="display:flex;align-items:center;gap:12px;" onclick="event.stopPropagation()">
+                <select id="configSelect" onchange="loadSelectedConfig()">
+                    <option value="">加载已有配置...</option>
+                </select>
+                <input type="text" id="configSaveName" placeholder="配置名称" style="width:120px;padding:4px 8px;font-size:13px;border:1px solid #ddd;border-radius:4px;">
+                <button onclick="saveConfig()" class="primary">💾 保存</button>
+                <button onclick="deleteConfig()" class="danger" style="font-size:12px;">删除</button>
+                <span class="arrow" id="configArrow">▶</span>
+            </div>
+        </div>
+        <div class="config-body open" id="configBody">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>证券基本信息 <span class="hint">（多行，每行一种信息）</span></label>
+                    <textarea id="companyName" rows="3" placeholder="证券简称：XXXX&#10;证券代码：XXXXXX"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>备查基础信息 <span class="hint">（多行）</span></label>
+                    <textarea id="bodyText" rows="3" placeholder="银行对账单余额对应账户性质或目的：XXXX&#10;1. 存款账户"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>联系人</label>
+                    <input type="text" id="contactPerson" placeholder="张三">
+                </div>
+                <div class="form-group">
+                    <label>联系电话</label>
+                    <input type="text" id="contactPhone" placeholder="13800138000">
+                </div>
+                <div class="form-group">
+                    <label>收件人</label>
+                    <input type="text" id="recipient" placeholder="李四">
+                </div>
+                <div class="form-group">
+                    <label>收件人电话</label>
+                    <input type="text" id="recipientPhone" placeholder="13900139000">
+                </div>
+                <div class="form-group">
+                    <label>邮箱</label>
+                    <input type="text" id="email" placeholder="example@company.com">
+                </div>
+                <div class="form-group full">
+                    <label>覆盖区域校准（whiteout_bottom）<span class="hint">— 白化覆盖的下边界位置</span></label>
+                    <div class="coverage-row">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="font-weight:400;font-size:12px;">配置默认值（自动）</label>
+                            <input type="number" id="whiteoutBottomCfg" value="280" readonly style="background:#f5f5f5;">
+                        </div>
+                        <div class="coverage-check">
+                            <input type="checkbox" id="useManual">
+                            <label>使用手动值</label>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="font-weight:400;font-size:12px;">手动值</label>
+                            <input type="number" id="whiteoutBottom" value="280" disabled>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== 批量上传区 ====== -->
+    <div class="upload-section">
+        <h3>📤 批量上传 PDF 文件</h3>
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+            <div class="icon">📁</div>
+            <p>点击选择文件，或将 PDF 文件拖放至此</p>
+            <div class="sub">支持同时上传多个 .pdf 文件，自动识别收函单位</div>
+        </div>
+        <input type="file" id="fileInput" accept=".pdf" multiple hidden
+               onchange="handleFiles(this.files)">
+        <div class="upload-actions">
+            <button class="btn primary" id="btnUpload" disabled onclick="uploadFiles()">
+                🚀 上传并识别
+            </button>
+            <button class="btn secondary" onclick="clearFiles()">清空列表</button>
+        </div>
+
+        <!-- 文件列表 -->
+        <div class="file-list" id="fileList">
+            <div style="text-align:center;color:#aaa;padding:20px;font-size:13px;">
+                请选择 PDF 文件
+            </div>
+        </div>
+
+        <!-- 状态栏 -->
+        <div class="status-bar" id="statusBar"></div>
+
+        <!-- 生成按钮 -->
+        <div style="margin-top:16px;display:none;" id="generateArea">
+            <button class="btn primary" id="btnGenerate" onclick="batchGenerate()">
+                ⚡ 批量生成
+            </button>
+            <span style="margin-left:12px;font-size:13px;color:#888;" id="fileCount"></span>
+        </div>
+
+        <!-- 结果区 -->
+        <div class="result-section" id="resultSection">
+            <h4 style="margin-bottom:12px;color:#2c3e50;">处理结果</h4>
+            <div id="resultList"></div>
+            <div style="margin-top:12px;">
+                <button class="btn secondary" onclick="downloadAll()">📥 下载全部（ZIP）</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="footer">投行函证 PDF 头部替换工具 v4.0</div>
+
+<!-- ====== Hidden iframe for downloads ====== -->
+<iframe id="dlFrame" style="display:none;"></iframe>
+
+<script>
+// ==================== 状态管理 ====================
+let pendingFiles = [];        // 待上传的 File 对象
+let uploadedFiles = [];      // 已上传的文件元数据 [{filename, key, recipient, confidence}]
+let batchToken = null;       // 批量作业 token
+
+// ==================== 页面初始化 ====================
+document.addEventListener('DOMContentLoaded', () => {
+    loadDefaultConfig();
+    loadConfigList();
+    setupDragDrop();
+});
+
+// ---- 拖拽上传 ----
+function setupDragDrop() {
+    const dz = document.getElementById('dropZone');
+    ['dragenter', 'dragover'].forEach(e => {
+        dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.add('drag-over'); });
+    });
+    ['dragleave', 'drop'].forEach(e => {
+        dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.remove('drag-over'); });
+    });
+    dz.addEventListener('drop', ev => {
+        handleFiles(ev.dataTransfer.files);
+    });
+}
+
+// ==================== 配置 ====================
+function toggleConfig() {
+    const body = document.getElementById('configBody');
+    const arrow = document.getElementById('configArrow');
+    body.classList.toggle('open');
+    arrow.classList.toggle('open');
+}
+
+function loadDefaultConfig() {
+    fetch('/config/default')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.config) {
+                applyConfig(data.config);
+            }
+        })
+        .catch(() => {});
+}
+
+function loadConfigList() {
+    fetch('/config/list')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.configs) {
+                const sel = document.getElementById('configSelect');
+                sel.innerHTML = '<option value="">加载已有配置...</option>';
+                data.configs.forEach(name => {
+                    sel.innerHTML += `<option value="${name}">${name}</option>`;
+                });
+            }
+        });
+}
+
+function loadSelectedConfig() {
+    const name = document.getElementById('configSelect').value;
+    if (!name) return;
+    fetch('/config/load/' + encodeURIComponent(name))
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.config) {
+                applyConfig(data.config);
+                alert(`已加载配置：${name}`);
+            }
+        });
+}
+
+function applyConfig(cfg) {
+    setVal('companyName', cfg.company_name || '');
+    setVal('bodyText', cfg.body_text || '');
+    setVal('contactPerson', cfg.contact_person || '');
+    setVal('contactPhone', cfg.contact_phone || '');
+    setVal('recipient', cfg.recipient || '');
+    setVal('recipientPhone', cfg.recipient_phone || '');
+    setVal('email', cfg.email || '');
+    if (cfg.whiteout_bottom) {
+        setVal('whiteoutBottomCfg', cfg.whiteout_bottom);
+        setVal('whiteoutBottom', cfg.whiteout_bottom);
+    }
+}
+
+function saveConfig() {
+    const name = document.getElementById('configSaveName').value.trim();
+    if (!name) { alert('请输入配置名称'); return; }
+    const fields = gatherFields();
+    fetch('/config/save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ name, fields })
+    }).then(r => r.json()).then(data => {
+        if (data.success) { alert('保存成功！'); loadConfigList(); }
+        else { alert('保存失败：' + (data.error || '未知错误')); }
+    });
+}
+
+function deleteConfig() {
+    const name = document.getElementById('configSelect').value;
+    if (!name) { alert('请先在列表中选择要删除的配置'); return; }
+    if (!confirm('确定删除配置 "' + name + '"？')) return;
+    fetch('/config/delete/' + encodeURIComponent(name), { method: 'POST' })
+        .then(r => r.json()).then(data => {
+            if (data.success) { alert('已删除'); loadConfigList(); }
+            else { alert('删除失败'); }
+        });
+}
+
+// ---- 覆盖区域手动/自动切换 ----
+document.getElementById('useManual').addEventListener('change', function() {
+    document.getElementById('whiteoutBottom').disabled = !this.checked;
+});
+
+function gatherFields() {
+    return {
+        company_name: getVal('companyName'),
+        body_text: getVal('bodyText'),
+        contact_person: getVal('contactPerson'),
+        contact_phone: getVal('contactPhone'),
+        recipient: getVal('recipient'),
+        recipient_phone: getVal('recipientPhone'),
+        email: getVal('email'),
+        whiteout_bottom: document.getElementById('useManual').checked
+            ? getVal('whiteoutBottom')
+            : getVal('whiteoutBottomCfg')
+    };
+}
+
+// ==================== 文件处理 ====================
+function handleFiles(fileList) {
+    // 转为数组，只取 PDF
+    const newFiles = Array.from(fileList).filter(f => f.name.toLowerCase().endsWith('.pdf'));
+    if (newFiles.length === 0) { alert('请选择 PDF 文件'); return; }
+
+    // 去重
+    const existing = new Set(pendingFiles.map(f => f.name));
+    const unique = newFiles.filter(f => !existing.has(f.name));
+    if (unique.length < newFiles.length) {
+        alert('部分文件已存在，已跳过重复文件');
+    }
+
+    pendingFiles = [...pendingFiles, ...unique];
+    renderFileList();
+}
+
+function renderFileList() {
+    const container = document.getElementById('fileList');
+    const btn = document.getElementById('btnUpload');
+
+    if (pendingFiles.length === 0) {
+        container.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;font-size:13px;">请选择 PDF 文件</div>';
+        btn.disabled = true;
+        return;
+    }
+
+    btn.disabled = false;
+    container.innerHTML = pendingFiles.map((f, i) => {
+        const sizeStr = f.size < 1024 ? f.size + 'B'
+            : f.size < 1048576 ? (f.size / 1024).toFixed(1) + 'KB'
+            : (f.size / 1048576).toFixed(1) + 'MB';
+        return `<div class="file-item">
+            <span class="name">${f.name}</span>
+            <span class="size">${sizeStr}</span>
+            <span style="font-size:12px;color:#aaa;">待上传</span>
+            <span style="font-size:12px;color:#c0392b;cursor:pointer;" onclick="removeFile(${i})">✕</span>
+        </div>`;
+    }).join('');
+}
+
+function removeFile(idx) {
+    pendingFiles.splice(idx, 1);
+    renderFileList();
+}
+
+function clearFiles() {
+    pendingFiles = [];
+    uploadedFiles = [];
+    batchToken = null;
+    document.getElementById('generateArea').style.display = 'none';
+    document.getElementById('resultSection').classList.remove('show');
+    renderFileList();
+    showStatus('');
+}
+
+// ==================== 上传 API ====================
+async function uploadFiles() {
+    if (pendingFiles.length === 0) return;
+
+    showStatus('<span class="spinner"></span>正在上传并识别收函单位...', true);
+    const btn = document.getElementById('btnUpload');
+    btn.disabled = true;
+
+    const formData = new FormData();
+    pendingFiles.forEach(f => formData.append('files', f));
+
+    try {
+        const resp = await fetch('/batch/upload', { method: 'POST', body: formData });
+        const data = await resp.json();
+
+        if (!data.success) {
+            showStatus('上传失败：' + (data.error || '未知错误'), true);
+            btn.disabled = false;
+            return;
+        }
+
+        batchToken = data.token;
+        uploadedFiles = data.files || [];
+        pendingFiles = [];
+
+        renderUploadedList();
+        document.getElementById('generateArea').style.display = 'block';
+        document.getElementById('fileCount').textContent =
+            `共 ${uploadedFiles.length} 个文件`;
+        showStatus(`✅ 上传完成！已识别 ${uploadedFiles.length} 个文件的收函单位`, true);
+
+    } catch (e) {
+        showStatus('网络错误：' + e.message, true);
+        btn.disabled = false;
+    }
+}
+
+function renderUploadedList() {
+    const container = document.getElementById('fileList');
+    if (uploadedFiles.length === 0) {
+        container.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">无文件</div>';
+        return;
+    }
+
+    container.innerHTML = uploadedFiles.map((f, i) => {
+        const badgeClass = f.confidence || 'low';
+        return `<div class="file-item">
+            <span class="name">${f.filename}</span>
+            <span class="size">${formatSize(f.size)}</span>
+            <input type="text" class="recipient-input"
+                   value="${escapeHtml(f.recipient || '')}"
+                   placeholder="未识别到收函单位"
+                   onchange="updateRecipient(${i}, this.value)">
+            <span class="confidence-badge ${badgeClass}">${f.confidence || '-'}</span>
+            <span class="re-extract" onclick="reExtract(${i})">🔄 重新识别</span>
+        </div>`;
+    }).join('');
+}
+
+function updateRecipient(idx, value) {
+    uploadedFiles[idx].recipient = value;
+}
+
+async function reExtract(idx) {
+    const f = uploadedFiles[idx];
+    showStatus(`<span class="spinner"></span>正在重新识别 ${f.filename}...`, true);
+    try {
+        const resp = await fetch('/batch/re-recognize', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ token: batchToken, index: idx })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            uploadedFiles[idx].recipient = data.recipient || '';
+            uploadedFiles[idx].confidence = data.confidence || 'low';
+            renderUploadedList();
+            showStatus('✅ 重新识别完成', true);
+        } else {
+            showStatus('重新识别失败：' + (data.error || ''), true);
+        }
+    } catch (e) {
+        showStatus('网络错误: ' + e.message, true);
+    }
+}
+
+// ==================== 批量生成 ====================
+async function batchGenerate() {
+    if (!batchToken || uploadedFiles.length === 0) {
+        alert('请先上传文件'); return;
+    }
+
+    const btn = document.getElementById('btnGenerate');
+    btn.disabled = true;
+    showStatus('<span class="spinner"></span>正在批量生成...', true);
+
+    const fields = gatherFields();
+
+    try {
+        const resp = await fetch('/batch/generate', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                token: batchToken,
+                ...fields
+            })
+        });
+        const data = await resp.json();
+
+        if (!data.success) {
+            showStatus('生成失败：' + (data.error || ''), true);
+            btn.disabled = false;
+            return;
+        }
+
+        renderResults(data.results || {});
+        showStatus('✅ 批量生成完成！', true);
+
+    } catch (e) {
+        showStatus('网络错误: ' + e.message, true);
+        btn.disabled = false;
+    }
+}
+
+function renderResults(results) {
+    const section = document.getElementById('resultSection');
+    const list = document.getElementById('resultList');
+    section.classList.add('show');
+
+    const items = Object.entries(results);
+    list.innerHTML = items.map(([outName, r]) => {
+        const ok = r.status === 'success';
+        return `<div class="result-item ${ok ? 'success' : 'error'}">
+            <span class="res-name">${r.filename}</span>
+            <span class="res-status ${ok ? 'ok' : 'err'}">${ok ? '✓ 成功' : '✗ 失败'}</span>
+            ${ok ? `<span class="res-download" onclick="downloadResult('${escapeHtml(outName)}')">📥 下载</span>` : ''}
+            ${!ok ? `<span style="font-size:12px;color:#e74c3c;">${escapeHtml(r.error || '')}</span>` : ''}
+        </div>`;
+    }).join('');
+}
+
+function downloadResult(filename) {
+    window.open('/batch/download?token=' + encodeURIComponent(batchToken)
+        + '&file=' + encodeURIComponent(filename), '_blank');
+}
+
+function downloadAll() {
+    window.open('/batch/download?token=' + encodeURIComponent(batchToken)
+        + '&all=1', '_blank');
+}
+
+// ==================== 工具函数 ====================
+function getVal(id) { return document.getElementById(id).value; }
+function setVal(id, v) { document.getElementById(id).value = v || ''; }
+
+function showStatus(msg, show) {
+    const bar = document.getElementById('statusBar');
+    bar.innerHTML = msg;
+    if (show) bar.classList.add('show'); else bar.classList.remove('show');
+}
+
+function formatSize(bytes) {
+    if (!bytes) return '-';
+    if (bytes < 1024) return bytes + 'B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + 'KB';
+    return (bytes / 1048576).toFixed(1) + 'MB';
+}
+
+function escapeHtml(s) {
+    if (!s) return '';
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
