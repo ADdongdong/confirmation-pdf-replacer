@@ -1,0 +1,15 @@
+{
+  "name": "testwb",
+  "body_text": "test",
+  "contacts": {
+    "项目联系人": "",
+    "项目联系人电话": "",
+    "收件人": "",
+    "收件人电话": "",
+    "邮箱": "",
+    "回函地址": ""
+  },
+  "whiteout_bottom": 178,
+  "footer_height": 22,
+  "is_default": false
+}
