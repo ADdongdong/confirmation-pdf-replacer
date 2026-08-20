@@ -26,6 +26,12 @@ public class HanzhengRequest {
     /** 邮箱 */
     public String email;
 
+    /** 回函地址 */
+    public String returnAddress;
+
+    /** 页脚遮盖带高度（从页面底部向上，pt），null=默认 22 */
+    public Double footerHeight;
+
     /** 输入 PDF 路径 */
     public String inputPath;
 
