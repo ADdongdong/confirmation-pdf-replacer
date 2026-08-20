@@ -1,0 +1,30 @@
+{
+  "name": "hanzheng_pdf_tool_project",
+  "version": "1.0.0",
+  "description": "券商项目组函证复核提效工具 — 在会计事务所已有函证 PDF 的基础上，自动替换函证说明、地址、联系人等信息为券商项目组信息，实现快速发函。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ADdongdong/hanzheng_pdf_tool_project.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ADdongdong/hanzheng_pdf_tool_project/issues"
+  },
+  "homepage": "https://github.com/ADdongdong/hanzheng_pdf_tool_project#readme",
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^11.16.0"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0"
+  }
+}

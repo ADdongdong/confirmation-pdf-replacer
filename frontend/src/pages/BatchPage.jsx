@@ -59,6 +59,15 @@ export default function BatchPage() {
   const [autoFooterY, setAutoFooterY] = useState(null);
   const [footerForce, setFooterForce] = useState(false);
 
+  // 用 ref 同步跟踪「用户是否拖拽过遮罩」和最新拖拽值
+  // （React setState 异步，保存时闭包可能读到旧值；ref 同步更新不受影响）
+  const touchedWhiteoutRef = useRef(false);
+  const touchedFooterRef = useRef(false);
+  const userWBRef = useRef(null);   // 最新上界拖拽值（pt）
+  const footerYRef = useRef(null);  // 最新页脚 y 值（pt）
+  // 始终持有最新 previewData 引用，避免 onForceChange/onValueChange 闭包读到陈旧 previewData
+  const previewDataRef = useRef(null);
+
   // ---- 配置面板 UI 状态 ----
   const [panelOpen, setPanelOpen] = useState(false);
   const [noConfig, setNoConfig] = useState(false);
@@ -82,6 +91,9 @@ export default function BatchPage() {
 
   const fileInputRef = useRef(null);
 
+  // 同步最新 previewData 到 ref，供 onForceChange/onValueChange 闭包使用
+  useEffect(() => { previewDataRef.current = previewData; }, [previewData]);
+
   // ==================== 默认配置自动加载 ====================
   const loadDefaultConfig = async () => {
     try {
@@ -97,12 +109,26 @@ export default function BatchPage() {
       setConfigName(c.name || '');
       if (c.whiteout_bottom != null) {
         setConfigWhiteoutBottom(c.whiteout_bottom);
+        // 同步到保存用的 ref：加载到的默认配置本就带强制覆盖下界，
+        // 若不同步，用户不改覆盖区直接保存时会被 touchedWhiteoutRef=false 冲成 null
+        touchedWhiteoutRef.current = true;
+        userWBRef.current = c.whiteout_bottom;
+        setForceWhiteout(true);
       } else {
         setConfigWhiteoutBottom(null);
       }
       if (c.body_text) setBodyText(c.body_text);
       if (c.contacts) applyContacts(c.contacts);
-      if (c.footer_height != null) setConfigFooterHeight(c.footer_height);
+      if (c.footer_height != null) {
+        setConfigFooterHeight(c.footer_height);
+        // 同步到保存用的 ref，避免加载带 footer_height 的配置后未改页脚直接保存被冲成 null
+        touchedFooterRef.current = true;
+        footerYRef.current = null; // 未拖拽，保存时走 configFooterHeight 分支
+        setFooterForce(true);
+      }
+      // 加载的就是默认配置本身，显式同步"设为默认配置"勾选状态，
+      // 避免一直停留在初始值 true 而让用户误以为保存时 is_default 被强制写入 true
+      setIsDefault(c.is_default !== false);
       setNoConfig(false);
     } catch {
       setDefaultConfigName('加载失败');
@@ -143,20 +169,30 @@ export default function BatchPage() {
       setBodyText(c.body_text || '');
       applyContacts(c.contacts || {});
       setConfigName(c.name || filename.replace('.json', ''));
-      setIsDefault(c.is_default !== false);
+      setIsDefault(c.is_default === true);
       setConfigWhiteoutBottom(c.whiteout_bottom || null);
       if (c.footer_height != null) setConfigFooterHeight(c.footer_height);
 
       // 更新顶部信息条
       setDefaultConfigName(c.name || '(未命名)');
-      // 若已加载预览，应用覆盖值
-      if (c.whiteout_bottom != null && previewData) {
-        setPreviewData({ ...previewData, userWhiteoutBottom: c.whiteout_bottom });
+      // 加载到的配置若带强制覆盖下界，同步到保存用的 ref（无论是否已上传预览），
+      // 否则不改覆盖区直接保存时 whiteout_bottom 会被重置为 null
+      if (c.whiteout_bottom != null) {
+        touchedWhiteoutRef.current = true;
+        userWBRef.current = c.whiteout_bottom;
         setForceWhiteout(true);
+        if (previewData) {
+          setPreviewData({ ...previewData, userWhiteoutBottom: c.whiteout_bottom });
+        }
       }
-      if (c.footer_height != null && previewData) {
-        setFooterY(Math.round(previewData.pageHeight - c.footer_height));
+      if (c.footer_height != null) {
         setFooterForce(true);
+        // 同步到保存用的 ref，加载带 footer_height 的配置后未改页脚直接保存不会丢
+        touchedFooterRef.current = true;
+        footerYRef.current = null; // 未拖拽，保存时走 configFooterHeight 分支
+        if (previewData) {
+          setFooterY(Math.round(previewData.pageHeight - c.footer_height));
+        }
       }
       message.success('已加载配置: ' + c.name);
     } catch (err) {
@@ -197,15 +233,23 @@ export default function BatchPage() {
       message.error('请输入函证正文');
       return;
     }
+    // 设计：覆盖下界/页脚一经保存即固化进配置，不再回退到“自动检测”。
+    // 优先级：当前预览用户值（含拖拽/强制） > 已加载配置的固化值 > 自动检测值（首次上传）
     let whiteoutBottom = null;
-    if (forceWhiteout && previewData) {
-      whiteoutBottom = Math.round(previewData.userWhiteoutBottom);
+    if (previewData && previewData.userWhiteoutBottom != null) {
+    whiteoutBottom = Math.round(previewData.userWhiteoutBottom);
+    } else if (configWhiteoutBottom != null) {
+    whiteoutBottom = configWhiteoutBottom;
+    } else if (previewData && previewData.autoWhiteoutBottom != null) {
+    whiteoutBottom = Math.round(previewData.autoWhiteoutBottom);
     }
     let footerHeight = null;
-    if (footerForce && previewData && footerY != null) {
-      footerHeight = Math.round(previewData.pageHeight - footerY);
+    if (previewData && footerY != null) {
+    footerHeight = Math.round(previewData.pageHeight - footerY);
     } else if (configFooterHeight != null) {
-      footerHeight = configFooterHeight;
+    footerHeight = configFooterHeight;
+    } else if (previewData && previewData.autoFooterY != null && previewData.pageHeight != null) {
+    footerHeight = Math.round(previewData.pageHeight - previewData.autoFooterY);
     }
     setSaving(true);
     try {
@@ -219,6 +263,7 @@ export default function BatchPage() {
       });
       if (data.success) {
         setConfigWhiteoutBottom(whiteoutBottom);
+        setConfigFooterHeight(footerHeight);
         setDefaultConfigName(name);
         setNoConfig(false);
         message.success('配置已保存: ' + name);
@@ -246,15 +291,25 @@ export default function BatchPage() {
         message.error('预览失败: ' + (data.error || '未知错误'));
         return;
       }
-      setPreviewData({ ...data, userWhiteoutBottom: data.autoWhiteoutBottom });
-      setForceWhiteout(false);
+      // 上传样本即锁定当前自动检测值为「强制覆盖下界」，使校准流程更直观：
+      // 用户无需再额外点「使用自动值」按钮
+      const wb = data.autoWhiteoutBottom;
+      setPreviewData((prev) => ({
+        ...data,
+        userWhiteoutBottom: prev && prev.userWhiteoutBottom != null
+          ? prev.userWhiteoutBottom
+          : wb,
+      }));
+      setForceWhiteout(true);
+      touchedWhiteoutRef.current = true;
+      userWBRef.current = wb;
       if (configFooterHeight != null) {
         setFooterY(Math.round(data.pageHeight - configFooterHeight));
       } else if (data.autoFooterY != null) {
         setFooterY(data.autoFooterY);
         setAutoFooterY(data.autoFooterY);
       }
-      setFooterForce(false);
+      setFooterForce(true);
       message.success('预览生成成功，可拖动遮罩调整覆盖区域');
     } catch (err) {
       message.error('预览请求失败: ' + err.message);
@@ -372,15 +427,17 @@ export default function BatchPage() {
       return;
     }
 
-    // 覆盖下界：优先使用实时预览拖拽值，否则使用配置中的值
-    let whiteoutBottom = configWhiteoutBottom;
-    if (forceWhiteout && previewData && previewData.userWhiteoutBottom != null) {
+    // 覆盖下界：用户当前调整值 > 配置固化值
+    let whiteoutBottom = null;
+    if (previewData && previewData.userWhiteoutBottom != null) {
       whiteoutBottom = Math.round(previewData.userWhiteoutBottom);
+    } else if (configWhiteoutBottom != null) {
+      whiteoutBottom = Math.round(configWhiteoutBottom);
     }
 
-    // 页脚遮盖高度
+    // 页脚遮盖高度：用户当前调整值 > 配置固化值
     let footerHeight = configFooterHeight;
-    if (footerForce && previewData && footerY != null) {
+    if (previewData && footerY != null) {
       footerHeight = Math.round(previewData.pageHeight - footerY);
     }
 
@@ -442,11 +499,7 @@ export default function BatchPage() {
           <Text strong style={{ color: '#1a3a5c' }}>
             {defaultConfigName || '未设置默认配置'}
           </Text>
-          {configWhiteoutBottom != null ? (
-            <Tag color="volcano">覆盖下界: {configWhiteoutBottom} pt</Tag>
-          ) : (
-            <Tag color="blue">覆盖: 自动检测</Tag>
-          )}
+          {null}
           {!noConfig && (
             <Text type="secondary" style={{ fontSize: 12 }}>
               首次使用请展开检查配置内容
@@ -517,35 +570,62 @@ export default function BatchPage() {
                 value={previewData.userWhiteoutBottom}
                 force={forceWhiteout}
                 onValueChange={(v) => {
-                  setPreviewData({ ...previewData, userWhiteoutBottom: v });
+                  const pd = previewDataRef.current;
+                  userWBRef.current = v; // 同步记录最新拖拽值（ref 不受异步 state 影响）
+                  if (pd) {
+                    setPreviewData({ ...pd, userWhiteoutBottom: v });
+                  }
                   setForceWhiteout(true);
+                  touchedWhiteoutRef.current = true;
                 }}
-                onForceChange={setForceWhiteout}
+                onForceChange={(f) => {
+                  // 强制此值 / 使用自动值 只改变 force 标志，不再切换数值，避免重置用户手动调整
+                  setForceWhiteout(f);
+                  touchedWhiteoutRef.current = true;
+                  const pd = previewDataRef.current;
+                  userWBRef.current = pd && pd.userWhiteoutBottom != null ? pd.userWhiteoutBottom : (pd ? pd.autoWhiteoutBottom : null);
+                }}
                 onReset={() => {
-                  setPreviewData({ ...previewData, userWhiteoutBottom: previewData.autoWhiteoutBottom });
-                  setForceWhiteout(false);
+                  // 重置上界：重新用当前配置的 whiteout_bottom 或自动值
+                  const pd = previewDataRef.current;
+                  const cfg = configWhiteoutBottom != null ? configWhiteoutBottom : (pd ? pd.autoWhiteoutBottom : null);
+                  userWBRef.current = cfg;
+                  if (pd && cfg != null) {
+                    setPreviewData({ ...pd, userWhiteoutBottom: cfg });
+                  }
+                  setForceWhiteout(true);
+                  touchedWhiteoutRef.current = true;
                 }}
                 autoFooterY={autoFooterY}
                 footerY={footerY}
                 footerForce={footerForce}
                 onFooterChange={(y) => {
-                  setFooterY(y);
+                  const pd = previewDataRef.current;
+                  footerYRef.current = y;
+                  if (pd) setFooterY(y);
                   setFooterForce(true);
+                  touchedFooterRef.current = true;
                 }}
-                onFooterForceChange={setFooterForce}
+                onFooterForceChange={(f) => {
+                  // 页脚强制/自动只切换标志，数值保持用户当前调整值
+                  setFooterForce(f);
+                  touchedFooterRef.current = true;
+                  const pd = previewDataRef.current;
+                  const y = footerY != null ? footerY : (pd && pd.autoFooterY != null ? pd.autoFooterY : (pd ? pd.pageHeight - 22 : null));
+                  footerYRef.current = y;
+                }}
                 onFooterReset={() => {
-                  if (autoFooterY != null) setFooterY(autoFooterY);
-                  setFooterForce(false);
+                  // 重置页脚：用当前配置的 footer_height 或自动值
+                  const pd = previewDataRef.current;
+                  const y = configFooterHeight != null && pd ? pd.pageHeight - configFooterHeight
+                    : (pd && pd.autoFooterY != null ? pd.autoFooterY : (autoFooterY != null ? autoFooterY : null));
+                  footerYRef.current = y;
+                  if (y != null) setFooterY(y);
+                  setFooterForce(true);
+                  touchedFooterRef.current = true;
                 }}
               />
             )}
-
-            <Alert
-              type="info"
-              showIcon
-              style={{ marginTop: 10 }}
-              message={'提示：若"使用自动值"，批量处理时每个 PDF 各自检测表格位置（更安全）；若"强制此值"，所有 PDF 统一使用此覆盖下界。'}
-            />
 
             <div style={{ borderTop: '1px solid #e2e8f0', margin: '16px 0' }} />
 
@@ -563,7 +643,7 @@ export default function BatchPage() {
                 }}
                 options={configListData.map((c) => ({
                   value: c.filename,
-                  label: c.name + (c.has_whiteout ? ' · 已校准' : ''),
+                  label: c.name,
                 }))}
               />
               <Space>
@@ -656,7 +736,7 @@ export default function BatchPage() {
               onChange={(e) => setIsDefault(e.target.checked)}
               style={{ marginTop: 12 }}
             >
-              设为默认配置（批量页面自动加载）
+              保存为默认配置（进入页面时自动加载）
             </Checkbox>
 
             <Button

@@ -91,9 +91,13 @@ export default function PreviewOverlay({
 
   const clampFooter = useCallback(
     (y) => {
-      // 页脚 y 范围：不低于上界 value 下方 10pt，不高于 pageHeight - 8
-      const lower = Math.min(value + 10, pageHeight - 20);
-      const upper = pageHeight - 8;
+      // 页脚遮盖带合理范围：footerHeight 8pt ~ 60pt
+      // 对应 y 范围：[pageHeight - 60, pageHeight - 8]
+      // 但要避免与上界覆盖重叠（footer y 必须 > value + 10）
+      const maxFooterHeight = 60;
+      const minFooterHeight = 8;
+      const lower = Math.max(value + 10, pageHeight - maxFooterHeight);
+      const upper = pageHeight - minFooterHeight;
       return Math.max(lower, Math.min(upper, y));
     },
     [value, pageHeight]
@@ -187,18 +191,13 @@ export default function PreviewOverlay({
   const overlayPx = imgHeight ? (value / pageHeight) * imgHeight : 0;
   const footerPx = imgHeight && hasFooter ? (footerY / pageHeight) * imgHeight : 0;
   const tablePx = imgHeight && tableY ? (tableY / pageHeight) * imgHeight : 0;
-  const isAuto = !force && value === autoValue;
-  const footerIsAuto = !footerForce && footerY === autoFooterY;
   const footerHeightPt = hasFooter ? pageHeight - footerY : 0;
 
+  // 按需求只展示当前值，不再区分"自动/手动"
   const labelText =
     unit === 'pct'
-      ? isAuto
-        ? '自动 (' + Math.round((autoValue / 100) * pageHeight) + ' pt)'
-        : '手动 ' + Math.round((value / 100) * pageHeight) + ' pt（自动: ' + Math.round((autoValue / 100) * pageHeight) + ' pt）'
-      : isAuto
-        ? '自动检测 (' + Math.round(autoValue) + ' pt)'
-        : '手动 ' + Math.round(value) + ' pt（自动: ' + Math.round(autoValue) + ' pt）';
+      ? Math.round((value / 100) * pageHeight) + ' pt'
+      : Math.round(value) + ' pt';
 
   return (
     <div style={{ marginTop: 12 }}>
@@ -229,8 +228,8 @@ export default function PreviewOverlay({
               {Math.round(value)} {unit === 'pct' ? '%' : 'pt'}
             </div>
 
-            {/* 表格保护线（绿色） */}
-            {tableY && (
+            {/* 表格保护线（绿色）：按需求隐藏 */}
+            {false && tableY && (
               <div
                 className="legend-bar show"
                 style={{ top: tablePx, background: '#22c55e' }}
@@ -274,13 +273,10 @@ export default function PreviewOverlay({
       </div>
 
       <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 13, color: '#2563eb' }}>■ 上界覆盖：{labelText}</span>
-        {tableY ? (
-          <span style={{ fontSize: 12, color: '#22c55e' }}>■ 表格保护线 y={Math.round(tableY)} pt</span>
-        ) : null}
+        <span style={{ fontSize: 13, color: '#2563eb' }}>■ 上界覆盖：{Math.round(value)} pt</span>
         {hasFooter ? (
           <span style={{ fontSize: 13, color: '#2563eb' }}>
-            ■ 下界页脚：{footerIsAuto ? '自动 ' + Math.round(pageHeight - autoFooterY) + 'pt' : '手动 ' + Math.round(footerHeightPt) + 'pt'}
+            ■ 下界页脚：{Math.round(footerHeightPt)} pt
           </span>
         ) : null}
         <button className="btn-sm" onClick={onReset} type="button">
@@ -291,7 +287,7 @@ export default function PreviewOverlay({
           onClick={() => onForceChange(!force)}
           type="button"
         >
-          {force ? '强制此值 ✓' : '使用自动值'}
+          {force ? '使用当前值' : '使用当前值'}
         </button>
         {hasFooter && (
           <>
@@ -303,7 +299,7 @@ export default function PreviewOverlay({
               onClick={() => onFooterForceChange(!footerForce)}
               type="button"
             >
-              {footerForce ? '强制页脚 ✓' : '页脚自动'}
+              使用当前值
             </button>
           </>
         )}

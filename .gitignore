@@ -30,3 +30,4 @@ git_init.py
 *.pem
 credentials.json
 secrets/
+node_modules

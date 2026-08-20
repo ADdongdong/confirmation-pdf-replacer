@@ -27,6 +27,26 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # 最大 32MB 上传
 
+
+@app.after_request
+def disable_static_cache(resp):
+    """前端产物（html/js/css）禁用强缓存，确保每次拉取最新，避免改完前端仍跑旧代码。
+
+    Flask 默认 send_file 对静态资源带 Cache-Control: max-age=...，浏览器会长期缓存
+    旧的 index.html 与旧 hash 的 main.*.js，导致用户重建前端后必须手动硬刷新。
+    这里对 html/js/css 强制 no-cache，普通刷新(F5)即得最新。
+    """
+    try:
+        path = request.path.lower()
+        if path.endswith('.html') or path.endswith('.js') or path.endswith('.css') or path == '/' or path == '/upload':
+            resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            resp.headers['Pragma'] = 'no-cache'
+            resp.headers['Expires'] = '0'
+    except Exception:
+        pass
+    return resp
+
+
 # 输出目录
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'outputs')
 TEMP_DIR = tempfile.mkdtemp(prefix='hanzheng_')
@@ -573,6 +593,15 @@ def config_save():
         if is_default:
             with open(_DEFAULT_CONFIG_FILE, 'w', encoding='utf-8') as f:
                 f.write(safe_name)
+        else:
+            # 取消默认：如果当前默认就是该配置，则清空默认指针
+            current_default = ''
+            if os.path.exists(_DEFAULT_CONFIG_FILE):
+                with open(_DEFAULT_CONFIG_FILE, 'r', encoding='utf-8') as f:
+                    current_default = f.read().strip()
+            if current_default == safe_name:
+                with open(_DEFAULT_CONFIG_FILE, 'w', encoding='utf-8') as f:
+                    f.write('')
 
         return jsonify({'success': True, 'filename': f'{safe_name}.json'})
 
@@ -623,6 +652,14 @@ def config_load(filename):
     try:
         with open(fpath, 'r', encoding='utf-8') as f:
             cfg = json.load(f)
+
+        # is_default 由 _default.txt 决定，不依赖 JSON 中的旧字段
+        default_name = ''
+        if os.path.exists(_DEFAULT_CONFIG_FILE):
+            with open(_DEFAULT_CONFIG_FILE, 'r', encoding='utf-8') as f:
+                default_name = f.read().strip()
+        cfg['is_default'] = (default_name == safe_name)
+
         return jsonify({'success': True, 'config': cfg})
     except Exception as e:
         return jsonify({'success': False, 'error': f'加载失败: {str(e)}'})

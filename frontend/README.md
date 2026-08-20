@@ -35,7 +35,11 @@ npm run build     # 产物输出到 ../python/static/react/
 npm run dev       # 开发模式（webpack-dev-server :3000，代理 API 到 :8888）
 ```
 
-构建产物输出到 `python/static/react/`，由 Flask `web_form_server.py` 通过 `render_react()` 返回（若产物不存在则回退到旧模板）。
+构建产物输出到 `python/static/react/`，同时被两个后端服务：
+- **Python 版**（端口 8888）：Flask 通过 `render_react()` 返回
+- **Java 版**（端口 8889）：`WebServer.java` 从 `../python/static/react/` 读取（API 契约已对齐 Python）
+
+> 构建产物 `publicPath` 为 `/static/react/`，Java 端 `StaticHandler` 按此路径服务静态资源。
 
 ## 说明
 

@@ -1,6 +1,6 @@
 # 函证头部替换工具（Java 版）
 
-自动替换会所函证 PDF 头部为券商格式。完全替代 Python 版本的功能。
+自动替换会所函证 PDF 头部为券商格式。**功能、界面与 Python 版完全同步**（共用同一套 React 前端，后端 API 契约对齐 Python）。
 
 ## 技术栈
 
@@ -8,101 +8,82 @@
 |------|------|
 | JDK | 1.8 |
 | Apache PDFBox | 2.0.27 |
-| 构建工具 | Maven 3.x |
+| 构建 | javac（无需 Maven） |
 | Web 服务器 | JDK 内置 HttpServer（零额外依赖） |
+| 前端 | React 18 + Ant Design（复用 `../python/static/react/` 构建产物） |
 
 ## 项目结构
 
 ```
-hanzheng_pdf_tool_java/
-├── pom.xml                          # Maven 配置
-├── fonts/
-│   └── NSimSun.ttf                  # 中文字体（宋体）
-├── src/main/java/com/hanzheng/
-│   ├── HanzhengPdfTool.java         # CLI 主入口
-│   ├── WebServer.java               # Web 表单服务
-│   ├── core/
-│   │   ├── CjkWrapper.java          # CJK 文本手动断行
-│   │   ├── FormatExtractor.java     # PDF 格式自动提取
-│   │   └── PdfProcessor.java        # PDF 白化 + 文本替换
-│   └── model/
-│       ├── PdfFormat.java           # 格式参数
-│       └── HanzhengRequest.java     # 请求参数
-└── src/main/resources/
-    └── index.html                   # Web 表单页面
+java/
+├── build.bat                    # javac 编译（输出到 target/classes）
+├── start.bat                    # 前台启动
+├── start_background.bat         # 后台启动（日志到 server.log）
+├── fonts/NSimSun.ttf            # 中文字体（宋体）
+├── lib/                         # PDFBox 依赖 jar
+├── configs/                     # 配置（JSON，与 Python 版格式一致）
+└── src/main/java/com/hanzheng/
+    ├── HanzhengPdfTool.java     # CLI 主入口
+    ├── WebServer.java           # Web 服务（API 契约对齐 Python）
+    ├── core/
+    │   ├── CjkWrapper.java      # CJK 文本手动断行
+    │   ├── FormatExtractor.java # PDF 格式自动提取（含 tableY）
+    │   ├── PdfProcessor.java    # PDF 白化 + 头部重写 + 页脚遮盖
+    │   ├── PdfPreviewUtil.java  # PDF → PNG 预览图渲染
+    │   ├── ConfigManager.java   # 配置管理（Python 契约 JSON）
+    │   └── RecipientExtractor.java # 收函单位自动提取
+    └── model/
+        ├── PdfFormat.java       # 格式参数
+        ├── HanzhengRequest.java # 请求参数（含回函地址、页脚高度）
+        └── BatchJob.java        # 批量作业（对齐 Python session）
 ```
 
 ## 编译运行
 
-### 1. 安装依赖
+```bash
+# 1. 编译（输出到 target/classes）
+build.bat
 
-确保已安装：
-- **JDK 1.8**（`java -version` 确认）
-- **Maven 3.x**（`mvn -version` 确认）
+# 2. 启动（前台）
+start.bat
+# 或后台：start_background.bat
+```
 
-### 2. 编译打包
+然后访问 http://localhost:8889
+
+> 前端依赖 `../python/static/react/` 构建产物，若该目录不存在会回退到 classpath 的 index.html。
+> 重新构建 React 前端后（`cd ../frontend && npm run build`），Java 版自动使用新产物。
+
+## 与 Python 版功能同步清单
+
+| 功能 | Python 版 | Java 版 |
+|------|-----------|---------|
+| React 前端 | ✅ | ✅ 复用同一产物 |
+| 批量处理（≤20，ZIP 下载） | ✅ | ✅ |
+| 收函单位自动提取（high/low） | ✅ | ✅ |
+| 覆盖区域校准（上界蓝遮罩） | ✅ | ✅ |
+| 页脚遮盖（下界蓝遮罩） | ✅ | ✅ |
+| 回函地址 | ✅ | ✅ |
+| 配置管理（中文 contacts） | ✅ | ✅ |
+| 预览图 PNG | ✅ | ✅ PDFBox PDFRenderer |
+| 置信度两档 | ✅ | ✅ |
+
+## API 契约（与 Python web_form_server.py 一致）
+
+- `GET /` `/upload` `/config` `/batch` → React 前端（HashRouter）
+- `GET /static/react/*` → React 静态资源
+- `POST /generate` → 单文件（multipart，contacts 中文 + 回函地址 + footer_height）
+- `POST /preview`、`GET /preview-img/<filename>` → 预览 PNG
+- `POST /batch/upload`、`GET /batch/preview/<token>/<fn>`、`POST /batch/re-recognize`、`POST /batch/generate`、`GET /batch/download/<token>`
+- `GET /config/list`、`GET /config/load/<filename>`、`POST /config/save`、`POST/DELETE /config/delete/<filename>`、`GET /config/default`、`POST /config/preview`
+
+## CLI 命令行模式
 
 ```bash
-cd hanzheng_pdf_tool_java
-mvn clean package -DskipTests
+java -cp "target\classes;lib\pdfbox-2.0.27.jar;lib\fontbox-2.0.27.jar;lib\commons-logging-1.2.jar" com.hanzheng.HanzhengPdfTool 输入.pdf -t 话术.txt -o 输出.pdf
 ```
-
-编译成功后在 `target/` 下生成：
-- `hanzheng-pdf-tool-1.0.0.jar` — 普通 JAR
-- `hanzheng-pdf-tool-1.0.0-jar-with-dependencies.jar` — 带依赖的 fat JAR（推荐）
-
-### 3. CLI 命令行模式
-
-```bash
-java -jar target/hanzheng-pdf-tool-1.0.0-jar-with-dependencies.jar \
-     会所函证.pdf -t 话术.txt -o 输出.pdf
-```
-
-话术文件格式（与 Python 版完全一致）：
-
-```
-TITLE:企业询证函
-致：中信证券股份有限公司
-　　本公司聘请的XX证券正在对本公司进行尽职调查...
----
-项目联系人：张三
-项目联系人电话：13800138000
-收件人：开源证券投行部
-收件人电话：0755-88888888
-邮箱：touhang@kzq.com.cn
-```
-
-### 4. Web 表单模式
-
-```bash
-java -cp target/hanzheng-pdf-tool-1.0.0-jar-with-dependencies.jar com.hanzheng.WebServer
-```
-
-然后浏览器访问 http://localhost:8888
-
-## 功能对比（与 Python 版）
-
-| 功能 | Python 版 (pymupdf) | Java 版 (PDFBox) |
-|------|---------------------|-------------------|
-| 格式自动提取 | ✅ pdfplumber | ✅ PDFTextStripper 扩展 |
-| 头部白化 | ✅ Redaction | ✅ 白色矩形覆盖 |
-| CJK 手动断行 | ✅ | ✅ 完全一致算法 |
-| 标题居中 | ✅ | ✅ |
-| 联系方式两栏 | ✅ | ✅ |
-| 伪加粗 | ✅ 双重渲染 | ✅ 双重渲染 |
-| 表格保护 | ✅ | ✅ |
-| Web 表单 | ✅ Flask | ✅ JDK HttpServer |
-| 中文宋体嵌入 | ✅ | ✅ PDType0Font |
-| CLI 话术文件 | ✅ | ✅ 完全兼容 |
-
-## 与 Python 版的主要差异
-
-1. **白化方式不同**：Python 版用 pymupdf 的 Redaction 机制（真实删除），Java 版用 PDFBox 的白色矩形覆盖（视觉白化）。原文字仍在 PDF 中但被白色遮住。
-2. **字号计算略有差异**：PDFBox 提取的字号精度可能略有不同，但正文字号误差在 ±0.5pt 内。
-3. **坐标系统**：PDFBox 使用 PDF 标准坐标系（左下角原点），代码中已自动转换。
 
 ## 注意事项
 
-- 字体文件 `NSimSun.ttf` 已放入 `fonts/` 目录
-- 如果字体缺失，程序会自动查找 `C:\Windows\Fonts\simsun.ttc`
-- Web 模式生成的文件保存在 `outputs/` 目录
+- 字体 `NSimSun.ttf` 已放入 `fonts/`，缺失时自动查找 `C:\Windows\Fonts\simsun.ttc`
+- 中文路径下编译/启动用 `build.bat`/`start.bat`（内部 chcp 65001 + `%~dp0`）
