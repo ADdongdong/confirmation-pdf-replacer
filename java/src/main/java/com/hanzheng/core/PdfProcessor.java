@@ -65,6 +65,11 @@ public class PdfProcessor {
                     ? req.whiteoutBottom : -1;
             processPage(doc, req, fmt, fontFile, boldFontFile, userWhiteout);
 
+            // 每页底部页脚遮盖（"索引号/编号/页码"），与 Python 版 redact_footer_per_page 一致
+            double footerH = (req.footerHeight != null && req.footerHeight > 0)
+                    ? req.footerHeight : 22.0;
+            redactFooterAllPages(doc, footerH);
+
             // 确保输出目录存在
             File outFile = new File(req.outputPath);
             File outDir = outFile.getParentFile();
@@ -231,12 +236,21 @@ public class PdfProcessor {
             yc += contactGap;
         }
 
+        // 回函地址单独一行（全宽，会所收到函证后需寄回此处）
+        String returnAddressVal = (req.returnAddress != null ? req.returnAddress.trim() : "");
+        if (!returnAddressVal.isEmpty() && yc + contactGap <= maxContactEnd + 4) {
+            String returnAddrText = "回函地址：" + returnAddressVal;
+            allPlaced.add(new PlacedText(returnAddrText, left, yc, left + paraW,
+                                          yc + bodyFs + 4, bodyFs, 2));
+            yc += contactGap;
+        }
+
         // 提前获取页面高度（后续用于坐标转换）
         float pageHeight = page.getMediaBox().getHeight();
 
-        // 表格起始 Y（PDF 坐标，从底部算起）→ 转换为布局坐标（从顶部算起）
-        // 即：表格距离页面顶部的距离 = pageHeight - tableY
-        double maxWhiteoutFromTop = pageHeight - tableY - 3;
+        // 表格保护线（从顶部算起的 y 坐标）：引导语/表头应保留，白化不能超过它
+        // tableY 为 PDFTextStripper 从顶部算起的坐标；白化上限 = tableY - 5（保留引导语）
+        double maxWhiteoutFromTop = tableY - 5;
 
         // 使用用户指定值，否则自动计算
         // 注意：所有 whiteoutBottom 均使用「从顶部算起」的布局坐标
@@ -285,6 +299,36 @@ public class PdfProcessor {
         System.out.println("  白化区域: 顶部 0 → 顶部 " + Math.round(whiteoutBottom)
                 + "pt (PDF y=" + Math.round(pdfWhiteY) + " → y=" + Math.round(pageHeight) + ")");
         System.out.println("  写入内容: " + allPlaced.size() + " 块");
+    }
+
+    /**
+     * 对所有页面底部绘制白色遮盖矩形（页脚遮盖：页码/索引号/编号行）。
+     * 与 Python 版 redact_footer_per_page 行为一致。
+     *
+     * @param doc     已打开的文档
+     * @param footerHeight 页脚遮盖带高度（从页面底部向上，pt）
+     */
+    private void redactFooterAllPages(PDDocument doc, double footerHeight) throws IOException {
+        int n = doc.getNumberOfPages();
+        for (int i = 0; i < n; i++) {
+            PDPage page = doc.getPage(i);
+            PDRectangle box = page.getMediaBox();
+            float pageW = box.getWidth();
+            float pageH = box.getHeight();
+            // 遮盖从底部向上 footerHeight 高度的区域（PDFBox 坐标原点在左下角，y 从底部算）
+            // 底部 0 ~ footerHeight 即页脚遮盖带（页码/索引号行）
+            float footerRectH = (float) footerHeight; // 矩形高度 = footerHeight，从底部向上
+            PDPageContentStream cs = new PDPageContentStream(doc, page,
+                    PDPageContentStream.AppendMode.APPEND, true);
+            try {
+                cs.setNonStrokingColor(Color.WHITE);
+                cs.addRect(0, 0, pageW, footerRectH); // 底部 0~footerHeight 区域 = 页脚遮盖带
+                cs.fill();
+            } finally {
+                cs.close();
+            }
+        }
+        System.out.println("  页脚遮盖: " + n + " 页，高度 " + Math.round(footerHeight) + " pt");
     }
 
     /**
