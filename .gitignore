@@ -31,3 +31,5 @@ git_init.py
 credentials.json
 secrets/
 node_modules
+~$*.docx
+~$*.*
