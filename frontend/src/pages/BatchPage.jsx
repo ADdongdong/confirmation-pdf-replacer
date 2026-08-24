@@ -19,6 +19,7 @@ import {
   DownOutlined,
 } from '@ant-design/icons';
 import PreviewOverlay from '../components/PreviewOverlay';
+import ConfirmationBinding from '../components/ConfirmationBinding';
 import {
   configDefault,
   configList,
@@ -347,7 +348,17 @@ export default function BatchPage() {
 
   // ==================== 文件操作 ====================
   const updateRecipient = (id, val) => {
-    setFileList((list) => list.map((f) => (f.id === id ? { ...f, recipient: val } : f)));
+    // 用户手动改收函单位时，旧的函证绑定可能失效 → 清除
+    setFileList((list) =>
+      list.map((f) => (f.id === id ? { ...f, recipient: val, confirmation: null } : f))
+    );
+  };
+
+  /** 更新单个文件的函证绑定（{code, issuer, record} 或 null） */
+  const updateConfirmation = (id, bound) => {
+    setFileList((list) =>
+      list.map((f) => (f.id === id ? { ...f, confirmation: bound || null } : f))
+    );
   };
 
   const reRecognizeOne = async (id) => {
@@ -356,7 +367,9 @@ export default function BatchPage() {
       const data = await batchReRecognize(sessionToken, id);
       if (data.success) {
         setFileList((list) =>
-          list.map((f) => (f.id === id ? { ...f, recipient: data.recipient, confidence: data.confidence } : f))
+          list.map((f) =>
+            f.id === id ? { ...f, recipient: data.recipient, confidence: data.confidence, confirmation: null } : f
+          )
         );
         message.success('识别完成');
       } else {
@@ -379,7 +392,7 @@ export default function BatchPage() {
       setFileList((list) =>
         list.map((f, i) => {
           const r = results[i];
-          return r && r.success ? { ...f, recipient: r.recipient, confidence: r.confidence } : f;
+          return r && r.success ? { ...f, recipient: r.recipient, confidence: r.confidence, confirmation: null } : f;
         })
       );
       message.success({ content: '全部重新识别完成', key: 're_recognize' });
@@ -427,6 +440,18 @@ export default function BatchPage() {
       return;
     }
 
+    // 校验函证系统绑定：每个文件都必须有关联的函证编号
+    const confirmationCodes = {};
+    let unboundCount = 0;
+    fileList.forEach((f) => {
+      confirmationCodes[f.id] = f.confirmation?.code || '';
+      if (!confirmationCodes[f.id]) unboundCount++;
+    });
+    if (unboundCount > 0) {
+      message.error(`有 ${unboundCount} 个文件未绑定函证编号，请绑定后再生成`);
+      return;
+    }
+
     // 覆盖下界：用户当前调整值 > 配置固化值
     let whiteoutBottom = null;
     if (previewData && previewData.userWhiteoutBottom != null) {
@@ -449,6 +474,7 @@ export default function BatchPage() {
         body_text: text,
         contacts,
         recipients,
+        confirmation_codes: confirmationCodes,
         whiteout_bottom: whiteoutBottom,
         footer_height: footerHeight,
       });
@@ -472,6 +498,10 @@ export default function BatchPage() {
   // 统计
   const cntHigh = useMemo(() => fileList.filter((f) => (f.confidence || 'low') !== 'low').length, [fileList]);
   const cntLow = fileList.length - cntHigh;
+  const cntUnbound = useMemo(
+    () => fileList.filter((f) => !f.confirmation?.code).length,
+    [fileList]
+  );
 
   const selectedConfig = configListData.find((x) => x.filename === loadSelect);
 
@@ -811,6 +841,16 @@ export default function BatchPage() {
                           {isHigh ? '已识别 ✅' : '需确认 ⚠'}
                         </span>
                       </div>
+
+                      {/* === 函证系统绑定（示例功能） === */}
+                      <div className="confirmation-row">
+                        <ConfirmationBinding
+                          recipient={f.recipient}
+                          fileId={f.id}
+                          bound={f.confirmation}
+                          onChange={(bound) => updateConfirmation(f.id, bound)}
+                        />
+                      </div>
                     </div>
                     <div className="file-actions" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <Button size="small" loading={recognizingId === f.id} onClick={() => reRecognizeOne(f.id)}>
@@ -830,6 +870,9 @@ export default function BatchPage() {
                 <span style={{ color: '#48bb78' }}>●</span> 已识别 {cntHigh}
                 &nbsp;&nbsp;
                 <span style={{ color: '#e53e3e' }}>●</span> 需确认 {cntLow}
+                &nbsp;&nbsp;
+                <span style={{ color: cntUnbound === 0 ? '#48bb78' : '#e53e3e' }}>●</span>{' '}
+                未绑定函证 {cntUnbound}
               </Text>
               <Space>
                 <Button size="small" loading={recognizingAll} onClick={reRecognizeAll}>
