@@ -41,9 +41,11 @@ const { Text } = Typography;
 const CONTACT_FIELDS = [
   { key: '项目联系人', id: 'contact_person', placeholder: '如：张三' },
   { key: '项目联系人电话', id: 'contact_phone', placeholder: '如：13800138000' },
+  { key: '邮编', id: 'postal_code', placeholder: '如：518000' },
   { key: '收件人', id: 'recipient', placeholder: '如：开源证券投行部' },
   { key: '收件人电话', id: 'recipient_phone', placeholder: '如：0755-88888888' },
   { key: '邮箱', id: 'email', placeholder: '如：touhang@kzq.com.cn' },
+  { key: '传真', id: 'fax', placeholder: '如：0755-88888887' },
   { key: '回函地址', id: 'return_address', placeholder: '如：深圳市福田中心区金田路3088号中洲大厦20层' },
 ];
 
@@ -708,8 +710,9 @@ export default function BatchPage() {
             </div>
 
             <Text strong>联系方式</Text>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
-              {CONTACT_FIELDS.slice(0, 4).map((f) => (
+            {/* 配置界面布局：行1=项目联系人|项目联系人电话|邮编，行2=收件人|收件人电话|邮箱|传真，行3=回函地址 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 10 }}>
+              {CONTACT_FIELDS.slice(0, 3).map((f) => (
                 <div key={f.id}>
                   <Text type="secondary" style={{ fontSize: 13 }}>
                     {f.key}
@@ -723,29 +726,35 @@ export default function BatchPage() {
                 </div>
               ))}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
-              <div>
-                <Text type="secondary" style={{ fontSize: 13 }}>
-                  邮箱
-                </Text>
-                <Input
-                  value={contacts['邮箱'] || ''}
-                  onChange={(e) => setContacts({ ...contacts, 邮箱: e.target.value })}
-                  placeholder="如：touhang@kzq.com.cn"
-                  maxLength={60}
-                />
-              </div>
-              <div>
-                <Text type="secondary" style={{ fontSize: 13 }}>
-                  回函地址
-                </Text>
-                <Input
-                  value={contacts['回函地址'] || ''}
-                  onChange={(e) => setContacts({ ...contacts, 回函地址: e.target.value })}
-                  placeholder="如：深圳市福田中心区金田路3088号中洲大厦20层"
-                  maxLength={120}
-                />
-              </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginTop: 12 }}>
+              {CONTACT_FIELDS.slice(3, 7).map((f) => (
+                <div key={f.id}>
+                  <Text type="secondary" style={{ fontSize: 13 }}>
+                    {f.key}
+                  </Text>
+                  <Input
+                    value={contacts[f.key] || ''}
+                    onChange={(e) => setContacts({ ...contacts, [f.key]: e.target.value })}
+                    placeholder={f.placeholder}
+                    maxLength={f.key.includes('邮箱') ? 60 : 30}
+                  />
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 12 }}>
+              {CONTACT_FIELDS.slice(7, 8).map((f) => (
+                <div key={f.id}>
+                  <Text type="secondary" style={{ fontSize: 13 }}>
+                    {f.key}
+                  </Text>
+                  <Input
+                    value={contacts[f.key] || ''}
+                    onChange={(e) => setContacts({ ...contacts, [f.key]: e.target.value })}
+                    placeholder={f.placeholder}
+                    maxLength={f.key.includes('邮箱') ? 60 : 120}
+                  />
+                </div>
+              ))}
             </div>
 
             <div style={{ marginTop: 12 }}>
