@@ -18,6 +18,8 @@ export function generateSingle(payload) {
   fd.append('contact_phone', payload.contact_phone || '');
   fd.append('recipient', payload.recipient || '');
   fd.append('recipient_phone', payload.recipient_phone || '');
+  fd.append('postal_code', payload.postal_code || '');
+  fd.append('fax', payload.fax || '');
   fd.append('email', payload.email || '');
   fd.append('return_address', payload.return_address || '');
   fd.append('pdf_file', payload.pdf_file);
