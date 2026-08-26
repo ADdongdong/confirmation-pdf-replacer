@@ -33,3 +33,4 @@ secrets/
 node_modules
 ~$*.docx
 ~$*.*
+*.log
