@@ -141,8 +141,10 @@ def generate():
             '项目联系人电话': request.form.get('contact_phone', '').strip(),
             '收件人': request.form.get('recipient', '').strip(),
             '收件人电话': request.form.get('recipient_phone', '').strip(),
-            '邮箱': request.form.get('email', '').strip(),
+            '邮编': request.form.get('postal_code', '').strip(),
+            '传真': request.form.get('fax', '').strip(),
             '回函地址': request.form.get('return_address', '').strip(),
+            '邮箱': request.form.get('email', '').strip(),
         }
         # 用户自定义白化下界（来自前端红色遮罩拖拽，单位 pt）
         whiteout_bottom = request.form.get('whiteout_bottom', '').strip()
@@ -578,6 +580,8 @@ def config_save():
                 '项目联系人电话': data.get('contacts', {}).get('项目联系人电话', '').strip(),
                 '收件人': data.get('contacts', {}).get('收件人', '').strip(),
                 '收件人电话': data.get('contacts', {}).get('收件人电话', '').strip(),
+                '邮编': data.get('contacts', {}).get('邮编', '').strip(),
+                '传真': data.get('contacts', {}).get('传真', '').strip(),
                 '邮箱': data.get('contacts', {}).get('邮箱', '').strip(),
                 '回函地址': data.get('contacts', {}).get('回函地址', '').strip(),
             },
