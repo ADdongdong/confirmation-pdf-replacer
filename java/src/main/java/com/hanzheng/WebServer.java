@@ -523,6 +523,8 @@ public class WebServer {
             req.contactPhone = getPartValue(parts, "contact_phone");
             req.recipient = getPartValue(parts, "recipient");
             req.recipientPhone = getPartValue(parts, "recipient_phone");
+            req.postalCode = getPartValue(parts, "postal_code");
+            req.fax = getPartValue(parts, "fax");
             req.email = getPartValue(parts, "email");
             req.returnAddress = getPartValue(parts, "return_address");
             req.whiteoutBottom = parseNullableDouble(getPartValue(parts, "whiteout_bottom"));
@@ -861,6 +863,8 @@ public class WebServer {
                     req.contactPhone = contacts.get("项目联系人电话");
                     req.recipient = contacts.get("收件人");
                     req.recipientPhone = contacts.get("收件人电话");
+                    req.postalCode = contacts.get("邮编");
+                    req.fax = contacts.get("传真");
                     req.email = contacts.get("邮箱");
                     req.returnAddress = contacts.get("回函地址");
                     req.whiteoutBottom = job.whiteoutBottom;
