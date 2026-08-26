@@ -155,10 +155,6 @@ public class PdfProcessor {
         List<String> promptWrapped = CjkWrapper.wrapCjkText(PROMPT_LINE, bodyFs, paraW);
         double yc = contactStartY;
 
-        // 联系方式两栏布局
-        double colWidth = (paraW - COL_GAP) / 2;
-        double rightX = left + colWidth + COL_GAP;
-
         // ---- 待写入的文本块列表 ----
         List<PlacedText> allPlaced = new ArrayList<PlacedText>();
 
@@ -200,39 +196,39 @@ public class PdfProcessor {
             yc += contactGap;
         }
 
-        // 联系方式
-        // 两栏配对
-        String[][] pairs = {
-            {req.contactPerson, req.contactPhone, "项目联系人", "项目联系人电话"},
-            {req.recipient, req.recipientPhone, "收件人", "收件人电话"},
+        // 联系方式（函证页面三列布局）
+        // 行1：项目联系人 | 项目联系人电话 | 邮编
+        // 行2：收件人 | 收件人电话 | 邮箱
+        // 行3：回函地址（全宽）
+        String[][] triples = {
+            {req.contactPerson, req.contactPhone, req.postalCode, "项目联系人", "项目联系人电话", "邮编"},
+            {req.recipient, req.recipientPhone, req.email, "收件人", "收件人电话", "邮箱"},
         };
 
-        for (String[] pair : pairs) {
+        double colW3 = (paraW - COL_GAP * 2) / 3;
+        for (String[] t : triples) {
             if (yc + contactGap > maxContactEnd + 4) break;
 
-            String leftVal = (pair[0] != null ? pair[0].trim() : "");
-            String rightVal = (pair[1] != null ? pair[1].trim() : "");
-            if (leftVal.isEmpty() && rightVal.isEmpty()) continue;
+            String v1 = (t[0] != null ? t[0].trim() : "");
+            String v2 = (t[1] != null ? t[1].trim() : "");
+            String v3 = (t[2] != null ? t[2].trim() : "");
+            if (v1.isEmpty() && v2.isEmpty() && v3.isEmpty()) continue;
 
-            if (!leftVal.isEmpty()) {
-                String leftText = pair[2] + "：" + leftVal;
-                allPlaced.add(new PlacedText(leftText, left, yc, left + colWidth,
+            if (!v1.isEmpty()) {
+                String text = t[3] + "：" + v1;
+                allPlaced.add(new PlacedText(text, left, yc, left + colW3,
                                               yc + bodyFs + 4, bodyFs, 2));
             }
-            if (!rightVal.isEmpty()) {
-                String rightText = pair[3] + "：" + rightVal;
-                allPlaced.add(new PlacedText(rightText, rightX, yc, left + paraW,
-                                              yc + bodyFs + 4, bodyFs, 2));
+            if (!v2.isEmpty()) {
+                String text = t[4] + "：" + v2;
+                allPlaced.add(new PlacedText(text, left + colW3 + COL_GAP, yc,
+                                              left + colW3 * 2 + COL_GAP, yc + bodyFs + 4, bodyFs, 2));
             }
-            yc += contactGap;
-        }
-
-        // 邮箱单独一行
-        String emailVal = (req.email != null ? req.email.trim() : "");
-        if (!emailVal.isEmpty() && yc + contactGap <= maxContactEnd + 4) {
-            String emailText = "邮箱：" + emailVal;
-            allPlaced.add(new PlacedText(emailText, left, yc, left + paraW,
-                                          yc + bodyFs + 4, bodyFs, 2));
+            if (!v3.isEmpty()) {
+                String text = t[5] + "：" + v3;
+                allPlaced.add(new PlacedText(text, left + colW3 * 2 + COL_GAP * 2, yc,
+                                              left + paraW, yc + bodyFs + 4, bodyFs, 2));
+            }
             yc += contactGap;
         }
 
