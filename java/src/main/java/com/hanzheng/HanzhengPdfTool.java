@@ -186,6 +186,8 @@ public class HanzhengPdfTool {
         req.contactPhone = contactMap.getOrDefault("项目联系人电话", "");
         req.recipient = contactMap.getOrDefault("收件人", "");
         req.recipientPhone = contactMap.getOrDefault("收件人电话", "");
+        req.postalCode = contactMap.getOrDefault("邮编", "");
+        req.fax = contactMap.getOrDefault("传真", "");
         req.email = contactMap.getOrDefault("邮箱", "");
 
         // 回函地址也可以作为联系人补充信息
