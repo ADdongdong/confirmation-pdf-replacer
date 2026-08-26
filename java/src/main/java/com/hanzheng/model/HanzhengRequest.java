@@ -23,6 +23,12 @@ public class HanzhengRequest {
     /** 收件人电话 */
     public String recipientPhone;
 
+    /** 邮编 */
+    public String postalCode;
+
+    /** 传真 */
+    public String fax;
+
     /** 邮箱 */
     public String email;
 
