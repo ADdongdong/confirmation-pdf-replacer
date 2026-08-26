@@ -488,7 +488,22 @@ def process_page(doc, header_lines, contact_lines, fmt, font_file,
             break
         line_h = body_fs + 4
 
-        if isinstance(item, tuple) and item[0] == 'pair':
+        if isinstance(item, tuple) and item[0] == 'triple':
+            # 三栏：左栏 + 中栏 + 右栏（项目联系人/收件人 行）
+            _, t1, t2, t3 = item
+            col_w3 = (para_w - COL_GAP * 2) / 3
+            if t1:
+                r1 = fitz.Rect(left, yc, left + col_w3, yc + line_h)
+                contact_blocks.append((r1, t1, body_fs, fitz.TEXT_ALIGN_LEFT))
+            if t2:
+                r2 = fitz.Rect(left + col_w3 + COL_GAP, yc,
+                               left + col_w3 * 2 + COL_GAP, yc + line_h)
+                contact_blocks.append((r2, t2, body_fs, fitz.TEXT_ALIGN_LEFT))
+            if t3:
+                r3 = fitz.Rect(left + col_w3 * 2 + COL_GAP * 2, yc,
+                               left + para_w, yc + line_h)
+                contact_blocks.append((r3, t3, body_fs, fitz.TEXT_ALIGN_LEFT))
+        elif isinstance(item, tuple) and item[0] == 'pair':
             # 两栏配对：左栏(col_width) + 右栏(剩余宽度)
             _, left_text, right_text = item
             if left_text:
@@ -695,26 +710,24 @@ def process_from_data(input_path, output_path, company_name, body_text,
         ('body', INDENT + body_text),
     ]
 
-    # ---- 构建联系方式（两栏布局）-----
-    # 配对：左栏=字段标签短的在左, 右栏=电话号码等在右
-    # 与“致：xxxx公司”行左对齐，不再缩进两个全角空格
+    # ---- 构建联系方式（三栏布局：函证页面展示）-----
+    # 行1：项目联系人 | 项目联系人电话 | 邮编
+    # 行2：收件人 | 收件人电话 | 邮箱
+    # 行3：回函地址（全宽）
     contact_lines = []
-    pairs_def = [
-        ('项目联系人', '项目联系人电话'),
-        ('收件人', '收件人电话'),
+    triple_def = [
+        ('项目联系人', '项目联系人电话', '邮编'),
+        ('收件人', '收件人电话', '邮箱'),
     ]
-    for left_key, right_key in pairs_def:
-        left_val = contacts.get(left_key, '').strip()
-        right_val = contacts.get(right_key, '').strip()
-        if left_val or right_val:
-            left_text = f'{left_key}：{left_val}' if left_val else ''
-            right_text = f'{right_key}：{right_val}' if right_val else ''
-            contact_lines.append(('pair', left_text, right_text))
-
-    # 邮箱单独一行（全宽）
-    email_val = contacts.get('邮箱', '').strip()
-    if email_val:
-        contact_lines.append(('single', f'邮箱：{email_val}'))
+    for k1, k2, k3 in triple_def:
+        v1 = contacts.get(k1, '').strip()
+        v2 = contacts.get(k2, '').strip()
+        v3 = contacts.get(k3, '').strip()
+        if v1 or v2 or v3:
+            t1 = f'{k1}：{v1}' if v1 else ''
+            t2 = f'{k2}：{v2}' if v2 else ''
+            t3 = f'{k3}：{v3}' if v3 else ''
+            contact_lines.append(('triple', t1, t2, t3))
 
     # 回函地址单独一行（全宽），会所收到函证后需寄回此处
     return_address = contacts.get('回函地址', '').strip()
